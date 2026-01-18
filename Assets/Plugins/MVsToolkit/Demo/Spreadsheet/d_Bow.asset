@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e545b2df63cd33f43b05092a8a14b269, type: 3}
+  m_Name: d_Bow
+  m_EditorClassIdentifier: Assembly-CSharp-firstpass::SSO_ItemData
+  itemName: Bow
+  itemDescription: To shoot on target
+  visual: {fileID: 21300000, guid: 35c380af472c3a445a750f94a1b5e418, type: 3}
+  prefab: {fileID: 930748544807910572, guid: 5d73b60167e8f7d4a90cd52b292194aa, type: 3}

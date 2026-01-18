@@ -1,0 +1,7 @@
+using UnityEngine;
+using MVsToolkit.Wrappers;
+
+    #ROOTNAMESPACEBEGIN#
+[CreateAssetMenu(fileName = "#SCRIPTNAME#", menuName = "RSE/_/#SCRIPTNAME#")]
+public class #SCRIPTNAME# : RuntimeScriptableEvent<>{}
+#ROOTNAMESPACEEND#
