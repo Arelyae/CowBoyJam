@@ -15,6 +15,6 @@ MonoBehaviour:
   enemyName: John Doe
   minWaitTime: 2
   maxWaitTime: 5
-  fastestDrawSpeed: 0.4
-  slowestDrawSpeed: 0.8
+  fastestDrawSpeed: 1
+  slowestDrawSpeed: 2
   skinMaterial: {fileID: 0}
