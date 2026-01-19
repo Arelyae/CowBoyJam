@@ -55545,8 +55545,8 @@ MonoBehaviour:
   aiAnimator: {fileID: 1632970585}
   minWaitTime: 10
   maxWaitTime: 20
-  fastestDrawSpeed: 0.5
-  slowestDrawSpeed: 0.8
+  fastestDrawSpeed: 1
+  slowestDrawSpeed: 2
 --- !u!1001 &1347043151
 PrefabInstance:
   m_ObjectHideFlags: 0
