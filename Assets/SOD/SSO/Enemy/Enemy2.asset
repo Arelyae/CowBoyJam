@@ -15,6 +15,6 @@ MonoBehaviour:
   enemyName: Jame Smithee
   minWaitTime: 2
   maxWaitTime: 5
-  fastestDrawSpeed: 0.5
-  slowestDrawSpeed: 0.8
+  fastestDrawSpeed: 0.8
+  slowestDrawSpeed: 1
   skinMaterial: {fileID: 0}
