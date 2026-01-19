@@ -3,28 +3,34 @@ using System.Collections;
 
 public class EnemyDuelAI : MonoBehaviour
 {
+    [Header("--- Configuration ---")]
+    [Tooltip("Glissez ici un profil (ScriptableObject) pour définir la difficulté")]
+    public DuelEnemyProfile difficultyProfile; // <--- LE CERVEAU
+
     [Header("--- Références ---")]
     public DuelArbiter arbiter;
     public DuelController player;
-    public Animator aiAnimator; // L'animator du modèle "Vivant"
-
-    [Header("--- Tension (Attente avant dégainé) ---")]
-    public float minWaitTime = 2.0f;
-    public float maxWaitTime = 5.0f;
-
-    [Header("--- Difficulté (Vitesse de tir) ---")]
-    [Tooltip("Temps le plus rapide (ex: 0.4s = Très Difficile)")]
-    public float fastestDrawSpeed = 0.4f;
-
-    [Tooltip("Temps le plus lent (ex: 0.8s = Facile)")]
-    public float slowestDrawSpeed = 0.8f;
+    public Animator aiAnimator;
+    public Renderer aiRenderer; // Pour changer le skin si besoin
 
     private Coroutine duelRoutine;
     private bool isDead = false;
 
     void Start()
     {
-        // On s'assure que l'animator est à vitesse normale au début
+        // Sécurité : Vérifier si un profil est assigné
+        if (difficultyProfile == null)
+        {
+            Debug.LogError("ERREUR : Pas de profil de difficulté assigné sur l'ennemi !");
+            return;
+        }
+
+        // Setup visuel (Optionnel : applique le skin du profil)
+        if (aiRenderer != null && difficultyProfile.skinMaterial != null)
+        {
+            aiRenderer.material = difficultyProfile.skinMaterial;
+        }
+
         if (aiAnimator) aiAnimator.speed = 1f;
 
         duelRoutine = StartCoroutine(DuelRoutine());
@@ -33,47 +39,43 @@ public class EnemyDuelAI : MonoBehaviour
     IEnumerator DuelRoutine()
     {
         // 1. PHASE DE TENSION
-        // L'IA attend, immobile (Idle)
-        yield return new WaitForSeconds(Random.Range(minWaitTime, maxWaitTime));
+        // On pioche les valeurs dans le ScriptableObject
+        float waitTime = Random.Range(difficultyProfile.minWaitTime, difficultyProfile.maxWaitTime);
+        yield return new WaitForSeconds(waitTime);
 
         if (isDead) yield break;
 
         // 2. CALCUL DE LA DIFFICULTÉ
-        // On choisit une durée aléatoire entre le "facile" et le "difficile"
-        float chosenDuration = Random.Range(fastestDrawSpeed, slowestDrawSpeed);
+        // On pioche la vitesse de tir dans le profil
+        float chosenDuration = Random.Range(difficultyProfile.fastestDrawSpeed, difficultyProfile.slowestDrawSpeed);
 
-        // On calcule le multiplicateur de vitesse
-        // Exemple : 1s / 0.5s = Speed 2 (L'animation joue 2x plus vite)
+        // Formule : Animation de base (1s) / Durée voulue
         float animSpeedMultiplier = 1.0f / chosenDuration;
 
-        // 3. DÉCLENCHEMENT DE L'ACTION
+        // 3. ACTION
         if (aiAnimator)
         {
-            aiAnimator.speed = animSpeedMultiplier; // On applique la vitesse
-            aiAnimator.SetTrigger("Fire");          // On lance l'anim
+            aiAnimator.speed = animSpeedMultiplier;
+            aiAnimator.SetTrigger("Fire");
         }
 
-        // On prévient l'arbitre que le mouvement a commencé (Honneur)
         if (arbiter != null)
         {
             arbiter.enemyHasStartedAction = true;
-            Debug.Log($"IA : Dégaine ! (Vitesse x{animSpeedMultiplier:F2} | Durée: {chosenDuration}s)");
+            Debug.Log($"IA ({difficultyProfile.enemyName}) : Dégaine en {chosenDuration:F3}s (Speed x{animSpeedMultiplier:F2})");
         }
 
-        // 4. LA FENÊTRE DE MORT
-        // On attend exactement la durée de l'animation accélérée
+        // 4. FENÊTRE DE MORT
         yield return new WaitForSeconds(chosenDuration);
 
         // --- SÉCURITÉ ---
         if (isDead || !this.enabled) yield break;
 
-        // 5. PUNITION (L'animation est finie, le coup part)
+        // 5. PUNITION
         if (player != null)
         {
-            Debug.Log("IA : Pan ! (Animation terminée)");
+            Debug.Log($"IA : Pan ! ({difficultyProfile.enemyName} a gagné)");
             player.Die();
-
-            // Note : L'animation aura visuellement fini son geste de tir à ce moment précis.
         }
     }
 
@@ -81,6 +83,5 @@ public class EnemyDuelAI : MonoBehaviour
     {
         isDead = true;
         if (duelRoutine != null) StopCoroutine(duelRoutine);
-        Debug.Log("IA : Morte avant la fin de son animation.");
     }
 }
