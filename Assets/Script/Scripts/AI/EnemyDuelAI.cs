@@ -7,12 +7,19 @@ public class EnemyDuelAI : MonoBehaviour
     [Tooltip("Glissez ici un profil (ScriptableObject) pour définir la difficulté")]
     public DuelEnemyProfile difficultyProfile;
 
+    [Header("--- Modules ---")]
+    public AIDeathHandler deathHandler; 
+
     [Header("--- Références ---")]
     public DuelArbiter arbiter;
     public DuelController player;
     public ScoreManager scoreManager;
     public Animator aiAnimator;
     public Renderer aiRenderer;
+
+
+    private Vector3 startPosition;
+    private Quaternion startRotation;
 
     private Coroutine duelRoutine;
     private bool isDead = false;
@@ -33,6 +40,9 @@ public class EnemyDuelAI : MonoBehaviour
         }
 
         if (aiAnimator) aiAnimator.speed = 1f;
+
+        startPosition = transform.position;
+        startRotation = transform.rotation;
 
         duelRoutine = StartCoroutine(DuelRoutine());
     }
@@ -99,6 +109,37 @@ public class EnemyDuelAI : MonoBehaviour
             Debug.Log($"IA : Pan ! ({difficultyProfile.enemyName} a gagné)");
             player.Die();
         }
+    }
+
+    public void ResetEnemy()
+    {
+        StopAllCoroutines();
+
+        // Reset Position
+        transform.position = startPosition;
+        transform.rotation = startRotation;
+
+        // Reset Logic
+        isDead = false;
+        if (arbiter != null) arbiter.enemyHasStartedAction = false;
+
+        // Reset Animator
+        if (aiAnimator)
+        {
+            aiAnimator.enabled = true;
+            aiAnimator.Rebind();
+            aiAnimator.speed = 1f;
+            aiAnimator.Play("Idle");
+        }
+
+        // --- APPEL DU RESET VISUEL (Ragdoll) ---
+        if (deathHandler != null)
+        {
+            deathHandler.ResetVisuals();
+        }
+        // ---------------------------------------
+
+        StartCoroutine(DuelRoutine());
     }
 
     public void NotifyDeath()

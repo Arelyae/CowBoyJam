@@ -11,6 +11,7 @@ public class EndManager : MonoBehaviour
     public InputActionReference reloadAction;
     public ScoreManager scoreManager; 
 
+
     [Header("--- Paramètres Victoire (Slow Motion) ---")]
     public float delayBeforeSlowMo = 0.1f;
     public float targetTimeScale = 0.1f;
@@ -26,6 +27,8 @@ public class EndManager : MonoBehaviour
 
     [Header("--- Cinématique ---")]
     public CameraDirector cameraDirector;
+    public DuelController playerController;
+    public EnemyDuelAI enemyAI;
 
     private void OnEnable()
     {
@@ -99,9 +102,30 @@ public class EndManager : MonoBehaviour
 
     public void RestartGame()
     {
-        DOTween.KillAll();
+        // 1. Nettoyage Global
+        DOTween.KillAll(); // Arrête tous les tweens (Camera, Textes, TimeScale)
+
+        // 2. Remettre le temps normal
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        gameIsOver = false;
+
+        // 3. APPELER LES RESETS INDIVIDUELS
+
+        // UI
+        if (scoreManager) scoreManager.ResetScore();
+
+        // Caméra
+        if (cameraDirector) cameraDirector.ResetCamera();
+
+        // Joueur
+        if (playerController) playerController.ResetPlayer();
+
+        // Ennemi
+        if (enemyAI) enemyAI.ResetEnemy();
+
+        Debug.Log("--- JEU REDÉMARRÉ (SOFT RESET) ---");
     }
+
+
 }

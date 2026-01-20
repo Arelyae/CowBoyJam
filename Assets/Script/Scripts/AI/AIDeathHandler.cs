@@ -1,82 +1,164 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class AIDeathHandler : MonoBehaviour
 {
-    [Header("--- Mannequins ---")]
-    [Tooltip("Le modèle vivant (avec Animator). Sera désactivé à la mort.")]
+    [Header("--- Models ---")]
     public GameObject aliveModel;
-
-    [Tooltip("Le modèle Ragdoll (avec Rigidbodies). Sera activé à la mort.")]
     public GameObject ragdollModel;
 
-    [Header("--- Physique du Ragdoll ---")]
-    [Tooltip("L'os de la tête SUR LE RAGDOLL (pour appliquer la force)")]
+    [Header("--- Ragdoll Physics ---")]
     public Rigidbody ragdollHeadRigidbody;
-
     public float headshotForce = 100f;
     public Vector3 impactModifier = new Vector3(0f, 0.5f, 0f);
 
     [Header("--- Configuration ---")]
     public float deathDelay = 0.05f;
 
-    [Header("--- Liens Externes ---")]
+    [Header("--- External Links ---")]
     public EnemyDuelAI combatScript;
     public EndManager endManager;
 
+    // --- MEMOIRE (Pour le Reset) ---
+    private Vector3 _startLocalPosAlive;
+    private Quaternion _startLocalRotAlive;
+
+    private Vector3 _startLocalPosRagdoll;
+    private Quaternion _startLocalRotRagdoll;
+
+    private Rigidbody[] _allRigidbodies;
+
+    // Pour mï¿½moriser la pose des os du ragdoll
+    private struct BoneTransform
+    {
+        public Vector3 localPosition;
+        public Quaternion localRotation;
+    }
+    private Dictionary<Transform, BoneTransform> _initialBoneTransforms = new Dictionary<Transform, BoneTransform>();
+
     void Awake()
     {
-        // SETUP INITIAL :
-        // On s'assure que le vivant est là et le mort est caché
-        if (aliveModel) aliveModel.SetActive(true);
-        if (ragdollModel) ragdollModel.SetActive(false);
+        // 1. SAUVEGARDE DES POSITIONS INITIALES (Le Vivant)
+        if (aliveModel)
+        {
+            _startLocalPosAlive = aliveModel.transform.localPosition;
+            _startLocalRotAlive = aliveModel.transform.localRotation;
+            aliveModel.SetActive(true);
+        }
+
+        // 2. SAUVEGARDE DU RAGDOLL
+        if (ragdollModel)
+        {
+            // On sauvegarde sa position locale par rapport au parent global
+            _startLocalPosRagdoll = ragdollModel.transform.localPosition;
+            _startLocalRotRagdoll = ragdollModel.transform.localRotation;
+
+            _allRigidbodies = ragdollModel.GetComponentsInChildren<Rigidbody>();
+
+            // On sauvegarde la pose de chaque os (T-Pose/Idle)
+            foreach (Transform t in ragdollModel.GetComponentsInChildren<Transform>())
+            {
+                if (t != ragdollModel.transform)
+                {
+                    _initialBoneTransforms[t] = new BoneTransform
+                    {
+                        localPosition = t.localPosition,
+                        localRotation = t.localRotation
+                    };
+                }
+            }
+            ragdollModel.SetActive(false);
+        }
     }
 
     public void TriggerHeadshotDeath(Vector3 incomingDirection)
     {
-        // 1. On coupe l'IA de combat (Cerveau)
         if (combatScript != null) combatScript.NotifyDeath();
-
-        // 2. On lance la transition
         StartCoroutine(SwapModelsRoutine(incomingDirection));
     }
 
     IEnumerator SwapModelsRoutine(Vector3 dir)
     {
-        // Petit délai pour l'impact (Hit Frame)
         if (deathDelay > 0f) yield return new WaitForSeconds(deathDelay);
 
-        // --- LE SWAP ---
-
-        // 1. On positionne le Ragdoll exactement là où est le vivant
+        // A. On tï¿½lï¿½porte le Ragdoll sur le Vivant (World Space) pour une transition fluide
         if (aliveModel != null && ragdollModel != null)
         {
             ragdollModel.transform.position = aliveModel.transform.position;
             ragdollModel.transform.rotation = aliveModel.transform.rotation;
         }
 
-        // 2. On désactive le vivant
+        // B. SWAP
         if (aliveModel) aliveModel.SetActive(false);
+        if (ragdollModel)
+        {
+            ragdollModel.SetActive(true);
+            SetRagdollPhysics(true); // On active la physique
+        }
 
-        // 3. On active le mort
-        if (ragdollModel) ragdollModel.SetActive(true);
+        if (endManager != null) endManager.TriggerVictory("Enemy Down!");
 
-        // ---------------
-
-        // 4. Victoire !
-        if (endManager != null) endManager.TriggerVictory("Ennemi abattu !");
-
-        // 5. Application de la force sur la tête du Ragdoll
+        // C. IMPULSION
         if (ragdollHeadRigidbody != null)
         {
             dir.Normalize();
             Vector3 finalDirection = (dir + impactModifier).normalized;
-
-            // On s'assure que le RB n'est pas kinematic (sécurité)
-            ragdollHeadRigidbody.isKinematic = false;
-
             ragdollHeadRigidbody.AddForce(finalDirection * headshotForce, ForceMode.Impulse);
             ragdollHeadRigidbody.AddTorque(Random.insideUnitSphere * headshotForce * 0.5f, ForceMode.Impulse);
+        }
+    }
+
+    // --- RESET VISUALS ---
+    public void ResetVisuals()
+    {
+        StopAllCoroutines();
+
+        // 1. RESET VIVANT
+        if (aliveModel)
+        {
+            aliveModel.SetActive(true);
+            // On remet ï¿½ la position initiale mï¿½morisï¿½e (et pas Vector3.zero)
+            aliveModel.transform.localPosition = _startLocalPosAlive;
+            aliveModel.transform.localRotation = _startLocalRotAlive;
+        }
+
+        // 2. RESET RAGDOLL
+        if (ragdollModel)
+        {
+            // A. Couper la physique d'abord
+            SetRagdollPhysics(false);
+
+            // B. Remettre chaque os ï¿½ sa place (Anti-spaghetti)
+            foreach (var kvp in _initialBoneTransforms)
+            {
+                if (kvp.Key != null)
+                {
+                    kvp.Key.localPosition = kvp.Value.localPosition;
+                    kvp.Key.localRotation = kvp.Value.localRotation;
+                }
+            }
+
+            // C. Remettre le Ragdoll entier ï¿½ sa place initiale mï¿½morisï¿½e
+            ragdollModel.transform.localPosition = _startLocalPosRagdoll;
+            ragdollModel.transform.localRotation = _startLocalRotRagdoll;
+
+            ragdollModel.SetActive(false);
+        }
+    }
+
+    private void SetRagdollPhysics(bool state)
+    {
+        if (_allRigidbodies == null) return;
+
+        foreach (Rigidbody rb in _allRigidbodies)
+        {
+            rb.isKinematic = !state;
+            if (!state)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
     }
 }

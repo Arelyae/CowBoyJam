@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using FMODUnity;
+using UnityEngine.InputSystem;
 
 public class ScoreManager : MonoBehaviour
 {
@@ -25,20 +26,34 @@ public class ScoreManager : MonoBehaviour
     public float delayBeforeCounting = 0.2f;
     public float scoreCountingDuration = 1.0f;
 
-    [Header("--- 3. TRANSITION ---")]
+    [Header("--- 3. COLORS (Inspector Control) ---")]
+    public Color speedTextColor = new Color(1f, 0.84f, 0f); // Gold default
+    public Color reflexNormalColor = Color.white;
+    public Color reflexFastColor = Color.green;
+    public Color anticipationTextColor = Color.grey;
+
+    [Tooltip("If reflex is faster than this (seconds), use the Fast Color.")]
+    public float fastReflexThreshold = 0.25f;
+
+    [Header("--- 4. TRANSITION ---")]
     public float delayBetweenLines = 0.5f;
 
     [Header("--- FMOD Audio ---")]
     public EventReference startTypingSound;
     public EventReference scoreCountingSound;
 
-    [Tooltip("Step threshold for playing sound. 1 = Every ms. 5 = Every 5ms.")]
+    [Tooltip("Step threshold for playing sound/haptics. 1 = Every ms. 10 = Every 10ms.")]
     [Range(1, 50)]
-    public int audioTriggerStep = 3; // <--- NEW PARAMETER
+    public int audioTriggerStep = 3;
+
+    [Header("--- Haptics (Vibration) ---")]
+    [Range(0f, 1f)] public float lowFreqMotor = 0.5f;
+    [Range(0f, 1f)] public float highFreqMotor = 0.1f;
+    public float hapticDuration = 0.05f;
 
     [Header("--- Labels ---")]
     public string drawSpeedLabel = "Draw Speed: ";
-    public string reflexLabel = "Reflex vs AI: ";
+    public string reflexLabel = "Reflex vs IA: ";
     public string anticipationLabel = "Anticipation (Pre-Shot)";
 
     // Internal Data
@@ -51,15 +66,36 @@ public class ScoreManager : MonoBehaviour
         if (scorePanel) scorePanel.SetActive(false);
     }
 
-    public void DisplayScore()
+    void OnDisable()
+    {
+        StopHaptics();
+    }
+
+    public void ResetScore()
     {
         if (scorePanel) scorePanel.SetActive(false);
+
         if (drawSpeedText) drawSpeedText.text = "";
         if (reflexText) reflexText.text = "";
 
-        // Reset Backgrounds
         if (drawSpeedBackground) drawSpeedBackground.fillAmount = 0f;
         if (reflexBackground) reflexBackground.fillAmount = 0f;
+
+        aiActionTimestamp = -1f;
+        playerDrawTimestamp = -1f;
+        playerFireTimestamp = -1f;
+
+        this.transform.DOKill();
+        if (drawSpeedText) drawSpeedText.DOKill();
+        if (reflexText) reflexText.DOKill();
+
+        StopHaptics();
+    }
+
+    public void DisplayScore()
+    {
+        if (scorePanel) scorePanel.SetActive(false);
+        ResetScoreUIOnly();
 
         float executionTime = playerFireTimestamp - playerDrawTimestamp;
         float reflexTime = playerFireTimestamp - aiActionTimestamp;
@@ -70,21 +106,23 @@ public class ScoreManager : MonoBehaviour
         scoreSequence.AppendInterval(delayBeforeScoreAppears);
         scoreSequence.AppendCallback(() => { if (scorePanel) scorePanel.SetActive(true); });
 
-        // --- PHASE 1 ---
+        // --- PHASE 1: EXECUTION SPEED ---
         if (drawSpeedText != null)
         {
-            scoreSequence.Append(CreateScoreTween(drawSpeedText, drawSpeedBackground, drawSpeedLabel, executionTime, "#FFD700"));
+            string hexColor = ColorToHex(speedTextColor);
+            scoreSequence.Append(CreateScoreTween(drawSpeedText, drawSpeedBackground, drawSpeedLabel, executionTime, hexColor));
         }
 
         scoreSequence.AppendInterval(delayBetweenLines);
 
-        // --- PHASE 2 ---
+        // --- PHASE 2: REFLEX ---
         if (reflexText != null)
         {
             if (aiActionTimestamp <= 0)
             {
-                // Anticipation Case
-                string fullText = $"<color=grey>{anticipationLabel}</color>";
+                // Anticipation (Player shot before AI moved)
+                string hexColor = ColorToHex(anticipationTextColor);
+                string fullText = $"<color=#{hexColor}>{anticipationLabel}</color>";
 
                 scoreSequence.AppendCallback(() => PlaySound(startTypingSound));
 
@@ -103,27 +141,38 @@ public class ScoreManager : MonoBehaviour
             }
             else
             {
-                // Normal Case
-                string colorHex = (reflexTime < 0.25f) ? "#00FF00" : "#FFFFFF";
-                scoreSequence.Append(CreateScoreTween(reflexText, reflexBackground, reflexLabel, reflexTime, colorHex));
+                // Normal Reflex
+                Color chosenColor = (reflexTime < fastReflexThreshold) ? reflexFastColor : reflexNormalColor;
+                string hexColor = ColorToHex(chosenColor);
+
+                scoreSequence.Append(CreateScoreTween(reflexText, reflexBackground, reflexLabel, reflexTime, hexColor));
             }
         }
+
+        scoreSequence.OnComplete(() => StopHaptics());
+    }
+
+    private void ResetScoreUIOnly()
+    {
+        if (drawSpeedText) drawSpeedText.text = "";
+        if (reflexText) reflexText.text = "";
+        if (drawSpeedBackground) drawSpeedBackground.fillAmount = 0f;
+        if (reflexBackground) reflexBackground.fillAmount = 0f;
     }
 
     private Sequence CreateScoreTween(TextMeshProUGUI targetText, Image bgImage, string label, float targetValue, string hexColor)
     {
         Sequence s = DOTween.Sequence().SetUpdate(true);
 
-        // A. LABEL TYPING
+        // A. LABEL
         s.AppendCallback(() => PlaySound(startTypingSound));
-
         s.Append(
             DOTween.To(() => "", x => targetText.text = x, label, labelTypingDuration)
             .SetEase(Ease.Linear)
             .SetUpdate(true)
         );
 
-        // Join Background Fill
+        // BG Fill
         if (bgImage != null)
         {
             bgImage.fillAmount = 0f;
@@ -137,37 +186,54 @@ public class ScoreManager : MonoBehaviour
         // B. PAUSE
         if (delayBeforeCounting > 0) s.AppendInterval(delayBeforeCounting);
 
-        // C. COUNTING NUMBERS + STEPPED AUDIO
-        // Local variable to track when we last played a sound
+        // C. COUNTING + HAPTICS
         int lastSoundMilli = 0;
 
         s.Append(
             DOTween.To(() => 0f, x =>
             {
-                targetText.text = $"{label}<color={hexColor}>{x:F3}s</color>";
+                // We inject the Hex Color here
+                targetText.text = $"{label}<color=#{hexColor}>{x:F3}s</color>";
 
-                // --- NEW AUDIO LOGIC ---
-                // Convert current float to int milliseconds (0.452 -> 452)
                 int currentMilli = Mathf.FloorToInt(x * 1000);
-
-                // We play sound only if the number has increased by 'audioTriggerStep'
                 if (currentMilli >= lastSoundMilli + audioTriggerStep)
                 {
                     PlaySound(scoreCountingSound);
-                    lastSoundMilli = currentMilli; // Reset tracker to current
+                    TriggerHaptic();
+                    lastSoundMilli = currentMilli;
                 }
-                // -----------------------
 
             }, targetValue, scoreCountingDuration)
             .SetEase(Ease.OutExpo)
             .SetUpdate(true)
         );
 
+        s.AppendCallback(() => StopHaptics());
         return s;
+    }
+
+    // Helper to convert Unity Color to Hex String for TextMeshPro
+    private string ColorToHex(Color color)
+    {
+        return ColorUtility.ToHtmlStringRGB(color);
     }
 
     void PlaySound(EventReference sound)
     {
         if (!sound.IsNull) RuntimeManager.PlayOneShot(sound);
+    }
+
+    // --- HAPTIC SYSTEM ---
+    void TriggerHaptic()
+    {
+        if (Gamepad.current == null) return;
+        Gamepad.current.SetMotorSpeeds(lowFreqMotor, highFreqMotor);
+        DOVirtual.DelayedCall(hapticDuration, StopHaptics).SetUpdate(true);
+    }
+
+    void StopHaptics()
+    {
+        if (Gamepad.current == null) return;
+        Gamepad.current.SetMotorSpeeds(0f, 0f);
     }
 }
