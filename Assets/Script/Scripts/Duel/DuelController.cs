@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 public class DuelController : MonoBehaviour
 {
@@ -14,7 +13,7 @@ public class DuelController : MonoBehaviour
     public DuelArbiter arbiter;
     public AIDeathHandler targetEnemy;
     public EndManager endManager;
-    public ScoreManager scoreManager; // <--- AJOUT
+    public ScoreManager scoreManager; // Reference for scoring
 
     [Header("--- VFX & Spawning ---")]
     public Transform firePoint;
@@ -30,9 +29,9 @@ public class DuelController : MonoBehaviour
 
     // Internal Timers & Logic
     private float lastStateChangeTime;
-    private float duelStartTime;
     private bool hasFumbled = false;
     private bool currentShotIsHonorable = false;
+    private GameObject lastFiredBullet;
 
     [Header("--- Difficulty ---")]
     public float minDrawDuration = 0.3f;
@@ -43,8 +42,9 @@ public class DuelController : MonoBehaviour
     public float feintCooldown = 0.5f;
     [Range(0.01f, 1f)] public float triggerThreshold = 0.5f;
 
+    // Animation Hashes
     private int animID_IsAiming, animID_IsCocked, animID_Feint, animID_Fire, animID_Die;
-    private GameObject lastFiredBullet;
+
     private void Awake()
     {
         animID_IsAiming = Animator.StringToHash("IsAiming");
@@ -61,6 +61,7 @@ public class DuelController : MonoBehaviour
         if (fireAction) fireAction.action.Enable();
         if (feintAction) feintAction.action.Enable();
     }
+
     private void OnDisable()
     {
         if (aimAction) aimAction.action.Disable();
@@ -76,6 +77,7 @@ public class DuelController : MonoBehaviour
         UpdateAnimationStates();
         HandleInput();
 
+        // Check for hesitation (holding the hammer too long)
         if (currentState == DuelState.Cocked)
         {
             float timeHeld = Time.time - lastStateChangeTime;
@@ -94,20 +96,22 @@ public class DuelController : MonoBehaviour
         float aimValue = aimAction.action.ReadValue<float>();
         bool inputAim = aimValue > triggerThreshold;
 
-        // AIM
+        // --- 1. AIM (DRAW) ---
         if (inputAim && currentState == DuelState.Idle)
         {
-            duelStartTime = Time.time;
             ChangeState(DuelState.Drawing);
             OnDraw?.Invoke();
+
+            // STOP REFLEX CLOCK HERE (Reaction Time)
             if (scoreManager != null) scoreManager.playerDrawTimestamp = Time.time;
         }
         else if (!inputAim && (currentState == DuelState.Drawing || currentState == DuelState.Cocked))
         {
+            // Player let go of the controls -> Return to Idle
             ChangeState(DuelState.Idle);
         }
 
-        // LOAD
+        // --- 2. LOAD (COCK HAMMER) ---
         if (loadAction.action.WasPressedThisFrame() && currentState == DuelState.Drawing)
         {
             if (Time.time - lastStateChangeTime < minDrawDuration)
@@ -119,7 +123,7 @@ public class DuelController : MonoBehaviour
             OnLoad?.Invoke();
         }
 
-        // FIRE
+        // --- 3. FIRE (SHOOT) ---
         if (fireAction.action.WasPressedThisFrame() && currentState == DuelState.Cocked)
         {
             if (Time.time - lastStateChangeTime < minLoadDuration)
@@ -130,7 +134,7 @@ public class DuelController : MonoBehaviour
             ProcessInputData();
         }
 
-        // FEINT
+        // --- 4. FEINT ---
         if (feintAction.action.WasPressedThisFrame() && currentState == DuelState.Idle)
         {
             StartCoroutine(PerformFeint());
@@ -140,60 +144,56 @@ public class DuelController : MonoBehaviour
     // --- PHASE 1: LOGIC & DECISION ---
     void ProcessInputData()
     {
-        currentState = DuelState.Fired; // Bloque les inputs
+        currentState = DuelState.Fired; // Block further inputs
 
-        // 1. Check Honor
+        // Check Honor (Did the enemy move first?)
         currentShotIsHonorable = false;
         if (arbiter != null) currentShotIsHonorable = arbiter.enemyHasStartedAction;
 
-        // 2. Result
         if (currentShotIsHonorable)
         {
-            // --- SUCCÈS ---
-            OnFire?.Invoke(); // Son "BOUM"
+            // SUCCESS
+            OnFire?.Invoke();
+
+            // STOP EXECUTION CLOCK HERE (Total Time)
+            if (scoreManager != null) scoreManager.playerFireTimestamp = Time.time;
         }
         else
         {
-            // --- ÉCHEC (Tir anticipé) ---
-            OnDryFire?.Invoke(); // Son "CLIC"
+            // FAIL (Dishonorable / Anticipation)
+            OnDryFire?.Invoke();
+            Debug.LogError("DEFEAT: Dishonorable Shot (Too early!)");
 
-            Debug.LogError("DÉFAITE : Tir Déshonorant (Trop tôt !)");
-
-            // STOP DU JEU IMMÉDIAT VIA LE MANAGER
             if (endManager != null)
             {
-                endManager.TriggerDefeat("Tir Prématuré ! (Déshonneur)");
+                endManager.TriggerDefeat("Premature Shot! (Dishonor)");
             }
         }
 
-        // 3. Animation (Pour le visuel du chien qui tombe)
+        // Trigger visual animation (Hammer falls)
         animator.SetTrigger(animID_Fire);
-
-        if (scoreManager != null) scoreManager.playerFireTimestamp = Time.time;
-
     }
 
-    // --- PHASE 2: VISUALS (Called by Animation Event) ---
-    // --- CORRECTION 1 : Annuler le tir si on est mort au moment du Bang ---
+    // --- PHASE 2: VISUALS (Called by Animation Event "SpawnShotEffects") ---
     public void SpawnShotEffects()
     {
-        // 1. Check de Mort (Déjà présent)
+        // Safety check: If player died during the trigger pull, cancel the shot
         if (currentState == DuelState.Dead) return;
         if (!currentShotIsHonorable) return;
 
         if (firePoint != null)
         {
-            // Flash
+            // Muzzle Flash
             if (muzzleFlashPrefab != null)
             {
                 GameObject flash = Instantiate(muzzleFlashPrefab, firePoint.position, firePoint.rotation, firePoint);
                 Destroy(flash, flashDuration);
             }
 
-            // Balle
+            // Bullet Spawning
             if (bulletPrefab != null && targetEnemy != null)
             {
-                // ON STOCKE LA RÉFÉRENCE DANS 'lastFiredBullet'
+                // We store the bullet reference to destroy it if we die while it travels
                 lastFiredBullet = Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
 
                 DuelBullet bulletScript = lastFiredBullet.GetComponent<DuelBullet>();
@@ -205,12 +205,14 @@ public class DuelController : MonoBehaviour
         }
     }
 
+    // --- STATES & UTILS ---
+
     IEnumerator Fumble(string reason)
     {
         hasFumbled = true;
         OnFumble?.Invoke();
         if (endManager != null) endManager.TriggerDefeat(reason);
-        Die();
+        Die(); // Fail state acts like death
         yield return null;
     }
 
@@ -219,19 +221,18 @@ public class DuelController : MonoBehaviour
         if (currentState == DuelState.Dead) return;
         currentState = DuelState.Dead;
 
-        // --- CORRECTION CRUCIALE : NETTOYAGE DE LA BALLE ---
-        // Si une balle est en train de voler vers l'ennemi, on la détruit immédiatement.
+        // CLEANUP: Destroy bullet if it's currently flying
         if (lastFiredBullet != null)
         {
             Destroy(lastFiredBullet);
             lastFiredBullet = null;
         }
-        // ---------------------------------------------------
 
         StopAllCoroutines();
         animator.SetTrigger(animID_Die);
         OnDeath?.Invoke();
 
+        // Only trigger defeat if it wasn't a self-fumble (EndManager handles victory/defeat logic)
         if (endManager != null && !hasFumbled) endManager.TriggerDefeat("You were shot dead.");
     }
 
@@ -239,6 +240,7 @@ public class DuelController : MonoBehaviour
     {
         bool isAiming = (currentState == DuelState.Drawing || currentState == DuelState.Cocked);
         animator.SetBool(animID_IsAiming, isAiming);
+
         bool isCocked = (currentState == DuelState.Cocked);
         animator.SetBool(animID_IsCocked, isCocked);
     }
@@ -252,23 +254,22 @@ public class DuelController : MonoBehaviour
         if (currentState != DuelState.Dead) currentState = DuelState.Idle;
     }
 
+    // --- SOFT RESET FUNCTION (Called by EndManager) ---
     public void ResetPlayer()
     {
-        // 1. Reset État
-        currentState = DuelState.Idle; // ou Holstered selon votre logique
+        // 1. Reset State Logic
+        currentState = DuelState.Idle;
         currentShotIsHonorable = false;
         hasFumbled = false;
 
-        // 2. Nettoyage balle en vol
+        // 2. Cleanup flying objects
         if (lastFiredBullet != null) Destroy(lastFiredBullet);
 
-        // 3. Reset Animation
-        animator.Rebind();      // Reset propre de l'animator
-        animator.speed = 1f;    // Reset vitesse
-        // animator.SetTrigger("Idle"); // Si nécessaire
+        // 3. Reset Animation System
+        animator.Rebind();
+        animator.speed = 1f;
 
-        // 4. Reset Input
-        // (Assurez-vous que vos booléens d'input comme 'inputAim' sont reset si besoin)
+        // 4. Input Reset happens automatically via state check in Update
+        // (currentState is now Idle, so inputs are valid again)
     }
-
 }

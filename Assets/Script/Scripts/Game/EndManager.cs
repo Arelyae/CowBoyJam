@@ -1,39 +1,54 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem;
 using DG.Tweening;
 using System.Collections;
 
-
 public class EndManager : MonoBehaviour
 {
     [Header("--- Input ---")]
-    public InputActionReference reloadAction;
-    public ScoreManager scoreManager; 
+    public InputActionReference reloadAction; // Kept your Input System reference
 
+    [Header("--- UI Managers ---")]
+    public ScoreManager scoreManager;
+    public FailManager failManager;
 
-    [Header("--- Paramètres Victoire (Slow Motion) ---")]
+    [Header("--- Gameplay References (Soft Reset) ---")]
+    public DuelController playerController;
+    public EnemyDuelAI enemyAI;
+    public CameraDirector cameraDirector;
+
+    [Header("--- Victory Settings (Slow Motion) ---")]
     public float delayBeforeSlowMo = 0.1f;
     public float targetTimeScale = 0.1f;
     public float slowMoDuration = 1.5f;
     public Ease slowMoEase = Ease.OutExpo;
 
-    [Header("--- Paramètres Défaite ---")]
-    [Tooltip("Attente en secondes avant de figer le jeu (Laisse le temps d'entendre le 'Clic' ou de voir la mort)")]
-    public float defeatDelay = 0.8f; // <--- NOUVEAU : 0.8s est souvent idéal
+    [Header("--- Defeat Settings ---")]
+    [Tooltip("Wait time in seconds before freezing (Allows hearing the 'Click' or seeing the death)")]
+    public float defeatDelay = 0.8f; // RESTORED: Vital for game feel
 
-    [Header("--- État ---")]
+    [Header("--- FAIL SCREEN STRINGS ---")]
+    [Header("1. Death")]
+    public string deathTitle = "YOU DIED";
+    [TextArea] public string deathReason = "Shot through the heart.";
+
+    [Header("2. Dishonor (Premature Shot)")]
+    public string dishonorTitle = "DISHONORABLE";
+    [TextArea] public string dishonorReason = "You fired before the draw.";
+
+    [Header("3. Fumble (Misfire/Jam)")]
+    public string fumbleTitle = "FUMBLE";
+    [Tooltip("Leave empty to use dynamic reason.")]
+    [TextArea] public string fumbleReasonOverride = "";
+
+    // Internal State
     private bool gameIsOver = false;
-
-    [Header("--- Cinématique ---")]
-    public CameraDirector cameraDirector;
-    public DuelController playerController;
-    public EnemyDuelAI enemyAI;
 
     private void OnEnable()
     {
         if (reloadAction != null) reloadAction.action.Enable();
     }
+
     private void OnDisable()
     {
         if (reloadAction != null) reloadAction.action.Disable();
@@ -41,6 +56,7 @@ public class EndManager : MonoBehaviour
 
     void Start()
     {
+        // Ensure clean start state
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
@@ -49,26 +65,77 @@ public class EndManager : MonoBehaviour
 
     void Update()
     {
+        if (!gameIsOver) return;
+
+        // --- INPUT DETECTION (Merged Logic) ---
+        bool pressedRestart = false;
+
+        // 1. Check your Input System Action
         if (reloadAction != null && reloadAction.action.WasPressedThisFrame())
         {
-            RestartGame();
+            pressedRestart = true;
+        }
+        // 2. Hard check for Keyboard 'R'
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            pressedRestart = true;
+        }
+        // 3. Hard check for Gamepad North (Triangle/Y) as requested
+        if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame)
+        {
+            pressedRestart = true;
+        }
+
+        if (pressedRestart)
+        {
+            HandleResetInput();
         }
     }
 
-    // --- VICTOIRE (inchangé) ---
-    public void TriggerVictory(string details)
+    // --- NEW: INPUT HANDLING PRIORITY ---
+    private void HandleResetInput()
+    {
+        // PRIORITY 1: Fail Screen Animation Skip
+        if (failManager != null && failManager.gameObject.activeInHierarchy)
+        {
+            if (failManager.IsAnimating)
+            {
+                failManager.SkipAnimation();
+                return;
+            }
+        }
+
+        // PRIORITY 2: Victory Screen Animation Skip
+        if (scoreManager != null && scoreManager.gameObject.activeInHierarchy)
+        {
+            if (scoreManager.IsAnimating)
+            {
+                scoreManager.SkipAnimation();
+                return;
+            }
+        }
+
+        // PRIORITY 3: Actual Restart
+        RestartGame();
+    }
+
+    // --- VICTORY LOGIC (Restored your SlowMo Coroutine) ---
+    public void TriggerVictory(string message)
     {
         if (gameIsOver) return;
         gameIsOver = true;
 
-        // --- AFFICHAGE DU SCORE ---
-        if (scoreManager != null)
-        {
-            scoreManager.DisplayScore();
-        }
-        // --------------------------
-
         if (cameraDirector != null) cameraDirector.TriggerKillCam();
+
+        // Ensure Fail UI is hidden
+        if (failManager) failManager.Hide();
+
+        // Show Score
+        if (scoreManager) scoreManager.DisplayScore();
+
+        // Kill Cam
+
+        // Start your original juicy slow motion
         StartCoroutine(SlowMotionSequence());
     }
 
@@ -76,56 +143,76 @@ public class EndManager : MonoBehaviour
     {
         if (delayBeforeSlowMo > 0) yield return new WaitForSeconds(delayBeforeSlowMo);
 
-        Time.fixedDeltaTime = 0.02f * targetTimeScale;
-
+        // Tween TimeScale smoothly
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, targetTimeScale, slowMoDuration)
             .SetUpdate(true)
             .SetEase(slowMoEase);
+
+        Time.fixedDeltaTime = 0.02f * targetTimeScale;
     }
 
-    // --- DÉFAITE (MODIFIÉ) ---
-    public void TriggerDefeat(string reason)
+    // --- DEFEAT LOGIC (Restored your Delay + Added New Fail Strings) ---
+    public void TriggerDefeat(string rawReason)
     {
         if (gameIsOver) return;
         gameIsOver = true;
 
-        Debug.Log($"DÉFAITE ({reason}) - Attente de {defeatDelay}s avant freeze...");
+        Debug.Log($"DEFEAT ({rawReason}) - Waiting {defeatDelay}s before freeze...");
 
-        // On utilise DOTween pour gérer le délai proprement
-        // 1. On attend 'defeatDelay' secondes (temps réel)
-        // 2. On passe le TimeScale à 0 en 0.2 secondes
-        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0f, 0.2f)
-            .SetDelay(defeatDelay) // <--- C'EST ICI QUE LA MAGIE OPÈRE
-            .SetUpdate(true)       // Important : Ignore le TimeScale actuel pour le délai
-            .SetEase(Ease.OutQuart);
+        // RESTORED: The Delay before freeze using DOTween
+        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f) // Slow down to 0.2f
+            .SetDelay(defeatDelay) // Wait for the 'Click' or death animation
+            .SetUpdate(true)
+            .SetEase(Ease.OutQuart)
+            .OnStart(() => { Time.fixedDeltaTime = 0.02f * 0.2f; });
+
+        // DETERMINE TEXT CONTENT
+        if (failManager)
+        {
+            string finalTitle = "";
+            string finalReason = "";
+
+            if (rawReason.Contains("Dishonor") || rawReason.Contains("Premature"))
+            {
+                finalTitle = dishonorTitle;
+                finalReason = dishonorReason;
+            }
+            else if (rawReason.Contains("Jammed") || rawReason.Contains("Misfire") || rawReason.Contains("Hesitated"))
+            {
+                finalTitle = fumbleTitle;
+                finalReason = !string.IsNullOrEmpty(fumbleReasonOverride) ? fumbleReasonOverride : rawReason;
+            }
+            else
+            {
+                finalTitle = deathTitle;
+                finalReason = deathReason;
+            }
+
+            // Trigger the UI
+            failManager.TriggerFailSequence(finalTitle, finalReason);
+        }
     }
 
+    // --- SOFT RESET ---
     public void RestartGame()
     {
-        // 1. Nettoyage Global
-        DOTween.KillAll(); // Arrête tous les tweens (Camera, Textes, TimeScale)
+        Debug.Log("--- SOFT RESET ---");
 
-        // 2. Remettre le temps normal
+        // 1. Global Cleanup
+        DOTween.KillAll();
+
+        // 2. Reset Time
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
 
-        // 3. APPELER LES RESETS INDIVIDUELS
-
-        // UI
+        // 3. Reset Individual Components
+        if (failManager) failManager.Hide();
         if (scoreManager) scoreManager.ResetScore();
 
-        // Caméra
         if (cameraDirector) cameraDirector.ResetCamera();
-
-        // Joueur
         if (playerController) playerController.ResetPlayer();
-
-        // Ennemi
         if (enemyAI) enemyAI.ResetEnemy();
 
-        Debug.Log("--- JEU REDÉMARRÉ (SOFT RESET) ---");
     }
-
-
 }
