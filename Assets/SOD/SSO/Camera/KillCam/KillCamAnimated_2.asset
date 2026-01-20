@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f62ff47d993ea8c4eb13dc9bd38d734a, type: 3}
+  m_Name: KillCamAnimated_2
+  m_EditorClassIdentifier: 
+  camMode: 2
+  mainWorldPos: {x: -6.34, y: 1.545718, z: -23.66}
+  mainWorldRot: {x: 0, y: -265.688, z: 0}
+  mainFOV: 40
+  mainDestPos: {x: -5.86, y: 1.545718, z: -17.25}
+  mainDestRot: {x: 0, y: -265.688, z: 0}
+  mainDestFOV: 40
+  animDuration: 8
+  animCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 12.944091
+      outSlope: 12.944091
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.06622869
+      value: 0.8572701
+      inSlope: 0.37207383
+      outSlope: 0.37207383
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 1
+      outWeight: 0.11694713
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0.15285315
+      outSlope: 0.15285315
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  camA_WorldPos: {x: 0, y: 0, z: 0}
+  camA_WorldRot: {x: 0, y: 0, z: 0}
+  camA_FOV: 0
+  camB_WorldPos: {x: 0, y: 0, z: 0}
+  camB_WorldRot: {x: 0, y: 0, z: 0}
+  camB_FOV: 0

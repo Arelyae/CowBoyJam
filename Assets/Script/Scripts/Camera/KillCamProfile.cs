@@ -1,22 +1,38 @@
 using UnityEngine;
+using DG.Tweening;
 
-// 1. Define the Enum
 public enum KillCamMode
 {
-    Standard,       
-    SplitScreen   
+    Standard,
+    SplitScreen,
+    Animated
 }
 
 [CreateAssetMenu(fileName = "NewWorldCam", menuName = "Duel/Kill Cam Profile (World)")]
 public class KillCamProfile : ScriptableObject
 {
     [Header("--- Mode ---")]
-    public KillCamMode camMode = KillCamMode.Standard; // <--- THE ENUM
+    public KillCamMode camMode = KillCamMode.Standard;
 
-    [Header("--- Main Camera (Absolute World Position) ---")]
+    [Header("--- Main Camera (Start Position) ---")]
+    [Tooltip("For 'Standard', this is the static position. For 'Animated', this is the START point.")]
     public Vector3 mainWorldPos;
     public Vector3 mainWorldRot;
     public float mainFOV = 60f;
+
+    // --- NEW SECTION: ANIMATION DATA ---
+    [Header("--- Animated Mode Settings (Destination) ---")]
+    [Tooltip("The camera will move TO this position.")]
+    public Vector3 mainDestPos;
+    public Vector3 mainDestRot;
+    public float mainDestFOV = 40f;
+
+    [Space(10)]
+    public float animDuration = 2.0f;
+
+    [Tooltip("Define the motion curve here (e.g., Ease In Out)")]
+    public AnimationCurve animCurve = AnimationCurve.EaseInOut(0, 0, 1, 1); // <--- NOW A CURVE
+    // -----------------------------------
 
     [Header("--- Aux Cam A (Only used if SplitScreen) ---")]
     public Vector3 camA_WorldPos;

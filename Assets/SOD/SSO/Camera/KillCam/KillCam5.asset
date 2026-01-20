@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f62ff47d993ea8c4eb13dc9bd38d734a, type: 3}
+  m_Name: KillCam5
+  m_EditorClassIdentifier: 
+  camMode: 0
+  mainWorldPos: {x: 0, y: 32, z: -22}
+  mainWorldRot: {x: 90, y: -90, z: 0}
+  mainFOV: 12
+  camA_WorldPos: {x: 0, y: 0, z: 0}
+  camA_WorldRot: {x: 0, y: 0, z: 0}
+  camA_FOV: 40
+  camB_WorldPos: {x: 0, y: 0, z: 0}
+  camB_WorldRot: {x: 0, y: 0, z: 0}
+  camB_FOV: 40

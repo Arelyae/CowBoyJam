@@ -15,16 +15,23 @@ public class CameraDirector : MonoBehaviour
     [Header("--- 3. Profiles ---")]
     public List<KillCamProfile> profiles;
 
+    // Internal State
     private Vector3 _startPos;
     private Quaternion _startRot;
     private float _startFOV;
 
+    // MEMORY: To ensure we don't repeat the same cam twice
+    private KillCamProfile _lastUsedProfile;
+
     void Start()
     {
         if (mainCamera == null) mainCamera = Camera.main;
+
+        // Memorize initial "Game Play" position
         _startPos = mainCamera.transform.position;
         _startRot = mainCamera.transform.rotation;
         _startFOV = mainCamera.fieldOfView;
+
         ResetCamera();
     }
 
@@ -32,37 +39,80 @@ public class CameraDirector : MonoBehaviour
     {
         if (profiles.Count == 0) return;
 
-        KillCamProfile p = profiles[Random.Range(0, profiles.Count)];
-        ApplyProfile(p);
+        Debug.Log("--- KILL CAM TRIGGERED ---");
+
+        // 1. Create a temporary list of candidates
+        List<KillCamProfile> candidates = new List<KillCamProfile>(profiles);
+
+        // 2. FILTER: If we have more than 1 profile, remove the last one used.
+        if (_lastUsedProfile != null && candidates.Count > 1)
+        {
+            candidates.Remove(_lastUsedProfile);
+        }
+
+        // 3. PICK RANDOM
+        KillCamProfile chosenProfile = candidates[Random.Range(0, candidates.Count)];
+        _lastUsedProfile = chosenProfile;
+
+        // 4. Apply
+        ApplyProfile(chosenProfile);
     }
 
     void ApplyProfile(KillCamProfile p)
     {
-        // 1. MAIN CAMERA (Always applied)
+        // 1. Cleanup
+        DisableSplitScreen();
+        mainCamera.transform.DOKill();
+        mainCamera.DOKill();
+
+        // 2. SET STARTING POSITION (Instant Snap)
         mainCamera.transform.position = p.mainWorldPos;
         mainCamera.transform.rotation = Quaternion.Euler(p.mainWorldRot);
         mainCamera.fieldOfView = p.mainFOV;
 
-        // 2. CHECK THE ENUM
+        // 3. APPLY MODE SPECIFIC LOGIC
         switch (p.camMode)
         {
+            case KillCamMode.Animated:
+                ApplyAnimatedProfile(p);
+                break;
+
             case KillCamMode.SplitScreen:
                 EnableSplitScreen(p);
                 break;
 
             case KillCamMode.Standard:
             default:
-                DisableSplitScreen(); // STRICTLY DISABLE UI AND AUX CAMS
                 break;
         }
     }
 
+    // --- ANIMATED CAMERA LOGIC (UPDATED WITH CURVE) ---
+    void ApplyAnimatedProfile(KillCamProfile p)
+    {
+        // We use SetEase(AnimationCurve) directly.
+
+        // Move
+        mainCamera.transform.DOMove(p.mainDestPos, p.animDuration)
+            .SetEase(p.animCurve) // <--- USING CURVE
+            .SetUpdate(true);
+
+        // Rotate
+        mainCamera.transform.DORotate(p.mainDestRot, p.animDuration)
+            .SetEase(p.animCurve) // <--- USING CURVE
+            .SetUpdate(true);
+
+        // Zoom FOV
+        mainCamera.DOFieldOfView(p.mainDestFOV, p.animDuration)
+            .SetEase(p.animCurve) // <--- USING CURVE
+            .SetUpdate(true);
+    }
+    // --------------------------------------------------
+
     void EnableSplitScreen(KillCamProfile p)
     {
-        // Activate UI
         if (splitScreenCanvas) splitScreenCanvas.SetActive(true);
 
-        // Activate and Position Aux Cam A
         if (auxCamA)
         {
             auxCamA.gameObject.SetActive(true);
@@ -71,7 +121,6 @@ public class CameraDirector : MonoBehaviour
             auxCamA.transform.rotation = Quaternion.Euler(p.camA_WorldRot);
         }
 
-        // Activate and Position Aux Cam B
         if (auxCamB)
         {
             auxCamB.gameObject.SetActive(true);
@@ -83,7 +132,6 @@ public class CameraDirector : MonoBehaviour
 
     void DisableSplitScreen()
     {
-        // STRICTLY TURN OFF EVERYTHING RELATED TO SPLIT SCREEN
         if (splitScreenCanvas) splitScreenCanvas.SetActive(false);
         if (auxCamA) auxCamA.gameObject.SetActive(false);
         if (auxCamB) auxCamB.gameObject.SetActive(false);
@@ -91,9 +139,11 @@ public class CameraDirector : MonoBehaviour
 
     public void ResetCamera()
     {
-        DisableSplitScreen(); // Ensure clean slate
+        DisableSplitScreen();
 
         mainCamera.transform.DOKill();
+        if (mainCamera.GetComponent<Camera>()) mainCamera.GetComponent<Camera>().DOKill();
+
         mainCamera.transform.position = _startPos;
         mainCamera.transform.rotation = _startRot;
         mainCamera.fieldOfView = _startFOV;
@@ -103,8 +153,8 @@ public class CameraDirector : MonoBehaviour
     [Header("--- RECORDING TOOL ---")]
     public KillCamProfile profileToRecord;
 
-    [ContextMenu("Record WORLD Positions")]
-    public void RecordPositions()
+    [ContextMenu("1. Record START Positions (Standard/Point A)")]
+    public void RecordStartPositions()
     {
         if (profileToRecord == null) { Debug.LogError("Assign a Profile first!"); return; }
 
@@ -113,9 +163,9 @@ public class CameraDirector : MonoBehaviour
             profileToRecord.mainWorldPos = mainCamera.transform.position;
             profileToRecord.mainWorldRot = mainCamera.transform.eulerAngles;
             profileToRecord.mainFOV = mainCamera.fieldOfView;
+            Debug.Log($"Recorded START pos for '{profileToRecord.name}'");
         }
 
-        // Only record Aux cams if they are active/relevant, or just record them anyway
         if (auxCamA)
         {
             profileToRecord.camA_WorldPos = auxCamA.transform.position;
@@ -130,7 +180,21 @@ public class CameraDirector : MonoBehaviour
             profileToRecord.camB_FOV = auxCamB.fieldOfView;
         }
 
-        Debug.Log($"SAVED WORLD POSITIONS to '{profileToRecord.name}'.");
+        UnityEditor.EditorUtility.SetDirty(profileToRecord);
+    }
+
+    [ContextMenu("2. Record DESTINATION Positions (Point B)")]
+    public void RecordDestinationPositions()
+    {
+        if (profileToRecord == null) { Debug.LogError("Assign a Profile first!"); return; }
+
+        if (mainCamera)
+        {
+            profileToRecord.mainDestPos = mainCamera.transform.position;
+            profileToRecord.mainDestRot = mainCamera.transform.eulerAngles;
+            profileToRecord.mainDestFOV = mainCamera.fieldOfView;
+            Debug.Log($"Recorded DESTINATION pos for '{profileToRecord.name}'");
+        }
         UnityEditor.EditorUtility.SetDirty(profileToRecord);
     }
 #endif
