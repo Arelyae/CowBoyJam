@@ -251,4 +251,24 @@ public class DuelController : MonoBehaviour
         yield return new WaitForSeconds(feintCooldown);
         if (currentState != DuelState.Dead) currentState = DuelState.Idle;
     }
+
+    public void ResetPlayer()
+    {
+        // 1. Reset État
+        currentState = DuelState.Idle; // ou Holstered selon votre logique
+        currentShotIsHonorable = false;
+        hasFumbled = false;
+
+        // 2. Nettoyage balle en vol
+        if (lastFiredBullet != null) Destroy(lastFiredBullet);
+
+        // 3. Reset Animation
+        animator.Rebind();      // Reset propre de l'animator
+        animator.speed = 1f;    // Reset vitesse
+        // animator.SetTrigger("Idle"); // Si nécessaire
+
+        // 4. Reset Input
+        // (Assurez-vous que vos booléens d'input comme 'inputAim' sont reset si besoin)
+    }
+
 }

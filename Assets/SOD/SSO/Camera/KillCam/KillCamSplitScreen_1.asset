@@ -10,10 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f62ff47d993ea8c4eb13dc9bd38d734a, type: 3}
-  m_Name: KillCam3
+  m_Name: KillCamSplitScreen_1
   m_EditorClassIdentifier: 
-  targetPosition: {x: 1.45, y: 1.08, z: -29.84}
-  targetRotation: {x: 0, y: 344, z: 0}
-  fieldOfView: 40
-  lookAtEnemy: 0
-  offsetFromEnemy: {x: 0, y: 0, z: 0}
+  camMode: 1
+  mainWorldPos: {x: 0, y: 0, z: 0}
+  mainWorldRot: {x: 0, y: 0, z: 0}
+  mainFOV: 60
+  camA_WorldPos: {x: 3.890001, y: 1.21, z: -26.89}
+  camA_WorldRot: {x: 0, y: 269, z: 0}
+  camA_FOV: 25
+  camB_WorldPos: {x: 3.890001, y: 1, z: -17.5}
+  camB_WorldRot: {x: 0, y: 269, z: 0}
+  camB_FOV: 25

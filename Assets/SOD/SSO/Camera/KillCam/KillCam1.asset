@@ -12,8 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f62ff47d993ea8c4eb13dc9bd38d734a, type: 3}
   m_Name: KillCam1
   m_EditorClassIdentifier: 
-  targetPosition: {x: 3, y: 1.5, z: -14}
-  targetRotation: {x: 0, y: 209.3428, z: 0}
-  fieldOfView: 29
-  lookAtEnemy: 0
-  offsetFromEnemy: {x: 0, y: 0, z: 0}
+  camMode: 0
+  mainWorldPos: {x: 1.44, y: 1.53, z: -14.34}
+  mainWorldRot: {x: 6.616317, y: 193.154, z: 357.2714}
+  mainFOV: 30
+  camA_WorldPos: {x: 0, y: 0, z: 0}
+  camA_WorldRot: {x: 0, y: 0, z: 0}
+  camA_FOV: 40
+  camB_WorldPos: {x: 0, y: 0, z: 0}
+  camB_WorldRot: {x: 0, y: 0, z: 0}
+  camB_FOV: 40
