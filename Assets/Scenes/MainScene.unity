@@ -56473,7 +56473,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ca3b62e2b026cc4885e70f04d140d10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  difficultyProfile: {fileID: 11400000, guid: 54272d0a50e55b74d99166a30caea093, type: 2}
+  difficultyProfile: {fileID: 11400000, guid: 509de8d5e6ec76f4b9ab3d4c87e8b4e1, type: 2}
   deathHandler: {fileID: 1987363785}
   arbiter: {fileID: 1636871959}
   player: {fileID: 474596864}
