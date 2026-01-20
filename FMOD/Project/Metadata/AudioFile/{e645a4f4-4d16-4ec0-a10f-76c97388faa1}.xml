@@ -2,7 +2,7 @@
 <objects serializationModel="Studio.02.03.00">
 	<object class="AudioFile" id="{e645a4f4-4d16-4ec0-a10f-76c97388faa1}">
 		<property name="assetPath">
-			<value>SoundEffects/Fumble_1.wav</value>
+			<value>Gun/Handle/Fumble_1.wav</value>
 		</property>
 		<property name="frequencyInKHz">
 			<value>48</value>

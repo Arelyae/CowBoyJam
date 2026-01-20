@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <objects serializationModel="Studio.02.03.00">
-	<object class="AudioFile" id="{f6ca4106-f32e-4304-8317-85aab77953a9}">
+	<object class="AudioFile" id="{d992f3da-6b92-41d8-8dcc-6d2fa436119e}">
 		<property name="assetPath">
-			<value>Gun/Fire/Fire_3.wav</value>
+			<value>Gun/Fire/EnemyGunShot.wav</value>
 		</property>
 		<property name="frequencyInKHz">
 			<value>48</value>
@@ -11,7 +11,7 @@
 			<value>2</value>
 		</property>
 		<property name="length">
-			<value>2.3270624999999998</value>
+			<value>0.90147916666666672</value>
 		</property>
 		<relationship name="masterAssetFolder">
 			<destination>{b31b3a37-387c-4baa-a86e-573b1d268eb8}</destination>

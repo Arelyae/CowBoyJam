@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using FMODUnity; // Don't forget this for Audio!
 
 public class EnemyDuelAI : MonoBehaviour
 {
@@ -8,7 +9,7 @@ public class EnemyDuelAI : MonoBehaviour
     public DuelEnemyProfile difficultyProfile;
 
     [Header("--- Modules ---")]
-    public AIDeathHandler deathHandler; 
+    public AIDeathHandler deathHandler;
 
     [Header("--- Références ---")]
     public DuelArbiter arbiter;
@@ -17,12 +18,18 @@ public class EnemyDuelAI : MonoBehaviour
     public Animator aiAnimator;
     public Renderer aiRenderer;
 
+    [Header("--- Combat VFX & Audio (New) ---")]
+    public Transform firePoint;          // The tip of the gun
+    public GameObject muzzleFlashPrefab;
+    public GameObject bulletPrefab;      // Visual bullet (optional)
+    public EventReference fireSound;     // FMOD Sound
 
     private Vector3 startPosition;
     private Quaternion startRotation;
 
     private Coroutine duelRoutine;
     private bool isDead = false;
+    private bool hasFired = false; // Prevents double firing
 
     void Start()
     {
@@ -44,12 +51,10 @@ public class EnemyDuelAI : MonoBehaviour
         startPosition = transform.position;
         startRotation = transform.rotation;
 
-        duelRoutine = StartCoroutine(DuelRoutine());
+        ResetEnemy(); // Use ResetEnemy to initialize properly
     }
 
-    // --- NOUVELLE FONCTION ---
-    // Cette fonction est appelée par le script "EnemyAnimationRelay" 
-    // au moment exact où l'Event d'Animation se déclenche.
+    // --- CALLED BY ANIMATION EVENT (Via Relay) ---
     public void RegisterDrawAction()
     {
         if (isDead) return;
@@ -86,24 +91,51 @@ public class EnemyDuelAI : MonoBehaviour
         if (aiAnimator)
         {
             aiAnimator.speed = animSpeedMultiplier;
-            aiAnimator.SetTrigger("Fire");
+            aiAnimator.SetTrigger("Fire"); // This triggers the Draw+Shoot animation
         }
-
-        // --- MODIFICATION ---
-        // Nous ne définissons PLUS le temps (aiActionTimestamp) ici.
-        // Nous attendons que l'animation appelle RegisterDrawAction().
-        // --------------------
 
         Debug.Log($"IA ({difficultyProfile.enemyName}) : Lance l'anim (Durée prévue: {chosenDuration:F3}s)");
 
-        // 4. FENÊTRE DE MORT (Attente que l'animation finisse le tir)
+        // 4. FENÊTRE DE TIR
+        // On attend exactement la durée calculée pour que le tir parte visuellement à la fin du geste
         yield return new WaitForSeconds(chosenDuration);
 
         // --- SÉCURITÉ ---
-        // Si l'IA est morte pendant qu'elle dégainait, elle ne tire pas
         if (isDead || !this.enabled) yield break;
 
-        // 5. PUNITION (Si le joueur n'a pas tiré avant)
+        // 5. FEU ! (Si le joueur n'a pas tiré avant)
+        FireAtPlayer();
+    }
+
+    // --- NEW FUNCTION: VISUALS + KILL ---
+    void FireAtPlayer()
+    {
+        if (isDead || hasFired) return;
+        hasFired = true;
+
+        // A. Visuals
+        if (firePoint != null)
+        {
+            // Flash
+            if (muzzleFlashPrefab)
+            {
+                GameObject flash = Instantiate(muzzleFlashPrefab, firePoint.position, firePoint.rotation, firePoint);
+                Destroy(flash, 0.1f);
+            }
+            // Bullet (Visual)
+            if (bulletPrefab)
+            {
+                Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+            }
+        }
+
+        // B. Audio
+        if (!fireSound.IsNull)
+        {
+            RuntimeManager.PlayOneShot(fireSound, transform.position);
+        }
+
+        // C. KILL PLAYER
         if (player != null)
         {
             Debug.Log($"IA : Pan ! ({difficultyProfile.enemyName} a gagné)");
@@ -121,6 +153,7 @@ public class EnemyDuelAI : MonoBehaviour
 
         // Reset Logic
         isDead = false;
+        hasFired = false;
         if (arbiter != null) arbiter.enemyHasStartedAction = false;
 
         // Reset Animator
@@ -129,7 +162,7 @@ public class EnemyDuelAI : MonoBehaviour
             aiAnimator.enabled = true;
             aiAnimator.Rebind();
             aiAnimator.speed = 1f;
-            aiAnimator.Play("Idle");
+            aiAnimator.Play("Idle"); // Force Idle
         }
 
         // --- APPEL DU RESET VISUEL (Ragdoll) ---
@@ -137,9 +170,9 @@ public class EnemyDuelAI : MonoBehaviour
         {
             deathHandler.ResetVisuals();
         }
-        // ---------------------------------------
 
-        StartCoroutine(DuelRoutine());
+        // Restart Loop
+        duelRoutine = StartCoroutine(DuelRoutine());
     }
 
     public void NotifyDeath()

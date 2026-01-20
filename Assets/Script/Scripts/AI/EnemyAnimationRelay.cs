@@ -3,9 +3,10 @@ using UnityEngine;
 public class EnemyAnimationRelay : MonoBehaviour
 {
     [Header("Link")]
-    public EnemyDuelAI mainAI; // Référence au script principal de l'IA
+    public EnemyDuelAI mainAI; // Drag the parent object with EnemyDuelAI here
 
-    // Cette fonction sera appelée par l'Event d'Animation
+    // 1. REFLEX EVENT
+    // Set this Event in the Animation window at the moment the hand grabs the gun
     public void TriggerDrawMoment()
     {
         if (mainAI != null)
@@ -14,9 +15,12 @@ public class EnemyAnimationRelay : MonoBehaviour
         }
     }
 
-    // Optionnel : Si vous voulez aussi synchroniser le tir de l'IA (le feu)
+    // 2. FIRE EVENT (Optional)
+    // You can use this if you want the shot to be perfectly synced with the animation frame
+    // instead of the mathematical timer.
     public void TriggerFireMoment()
     {
-        // Logique de tir de l'IA si besoin
+        // Currently handled by the Coroutine timer in EnemyDuelAI, 
+        // but useful to have for polish later.
     }
 }
