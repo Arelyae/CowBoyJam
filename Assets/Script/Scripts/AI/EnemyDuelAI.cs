@@ -1,46 +1,46 @@
 using System.Collections;
 using UnityEngine;
-using FMODUnity; // Don't forget this for Audio!
+using FMODUnity;
 
 public class EnemyDuelAI : MonoBehaviour
 {
     [Header("--- Configuration ---")]
-    [Tooltip("Glissez ici un profil (ScriptableObject) pour définir la difficulté")]
     public DuelEnemyProfile difficultyProfile;
 
     [Header("--- Modules ---")]
     public AIDeathHandler deathHandler;
 
-    [Header("--- Références ---")]
+    [Header("--- References ---")]
     public DuelArbiter arbiter;
     public DuelController player;
     public ScoreManager scoreManager;
     public Animator aiAnimator;
     public Renderer aiRenderer;
 
-    [Header("--- Combat VFX & Audio (New) ---")]
-    public Transform firePoint;          // The tip of the gun
+    [Header("--- Target Reference (NEW) ---")]
+    [Tooltip("Drag the Player's Camera or Head object here so the AI aims at the face.")]
+    public Transform playerHeadTarget; // <--- ASSIGN THIS IN INSPECTOR (Main Camera)
+
+    [Header("--- Combat VFX & Audio ---")]
+    public Transform firePoint;
     public GameObject muzzleFlashPrefab;
-    public GameObject bulletPrefab;      // Visual bullet (optional)
-    public EventReference fireSound;     // FMOD Sound
+    public GameObject bulletPrefab;
+    public EventReference fireSound;
 
     private Vector3 startPosition;
     private Quaternion startRotation;
-
     private Coroutine duelRoutine;
     private bool isDead = false;
-    private bool hasFired = false; // Prevents double firing
+    private bool hasFired = false;
 
     void Start()
     {
-        // Sécurité : Vérifier si un profil est assigné
         if (difficultyProfile == null)
         {
-            Debug.LogError("ERREUR : Pas de profil de difficulté assigné sur l'ennemi !");
+            Debug.LogError("ERROR: No Difficulty Profile assigned!");
             return;
         }
 
-        // Setup visuel (Skin)
         if (aiRenderer != null && difficultyProfile.skinMaterial != null)
         {
             aiRenderer.material = difficultyProfile.skinMaterial;
@@ -51,63 +51,42 @@ public class EnemyDuelAI : MonoBehaviour
         startPosition = transform.position;
         startRotation = transform.rotation;
 
-        ResetEnemy(); // Use ResetEnemy to initialize properly
+        ResetEnemy();
     }
 
-    // --- CALLED BY ANIMATION EVENT (Via Relay) ---
     public void RegisterDrawAction()
     {
         if (isDead) return;
 
-        // 1. On enregistre le temps exact pour le score de réflexe
-        if (scoreManager != null)
-        {
-            scoreManager.aiActionTimestamp = Time.time;
-        }
+        if (scoreManager != null) scoreManager.aiActionTimestamp = Time.time;
+        if (arbiter != null) arbiter.enemyHasStartedAction = true;
 
-        // 2. On valide que l'ennemi a bougé (Le tir du joueur devient Honorable)
-        if (arbiter != null)
-        {
-            arbiter.enemyHasStartedAction = true;
-        }
-
-        Debug.Log("IA : Mouvement détecté (Event Animation) ! Le chrono est lancé.");
+        Debug.Log("AI: Movement detected (Reflex Clock Start).");
     }
 
     IEnumerator DuelRoutine()
     {
-        // 1. PHASE DE TENSION (Attente aléatoire)
         float waitTime = Random.Range(difficultyProfile.minWaitTime, difficultyProfile.maxWaitTime);
         yield return new WaitForSeconds(waitTime);
 
         if (isDead) yield break;
 
-        // 2. CALCUL DE LA VITESSE
         float chosenDuration = Random.Range(difficultyProfile.fastestDrawSpeed, difficultyProfile.slowestDrawSpeed);
-        // Formule : Animation de base (1s) / Durée voulue
         float animSpeedMultiplier = 1.0f / chosenDuration;
 
-        // 3. LANCEMENT DE L'ANIMATION
         if (aiAnimator)
         {
             aiAnimator.speed = animSpeedMultiplier;
-            aiAnimator.SetTrigger("Fire"); // This triggers the Draw+Shoot animation
+            aiAnimator.SetTrigger("Fire");
         }
 
-        Debug.Log($"IA ({difficultyProfile.enemyName}) : Lance l'anim (Durée prévue: {chosenDuration:F3}s)");
-
-        // 4. FENÊTRE DE TIR
-        // On attend exactement la durée calculée pour que le tir parte visuellement à la fin du geste
         yield return new WaitForSeconds(chosenDuration);
 
-        // --- SÉCURITÉ ---
         if (isDead || !this.enabled) yield break;
 
-        // 5. FEU ! (Si le joueur n'a pas tiré avant)
         FireAtPlayer();
     }
 
-    // --- NEW FUNCTION: VISUALS + KILL ---
     void FireAtPlayer()
     {
         if (isDead || hasFired) return;
@@ -116,16 +95,27 @@ public class EnemyDuelAI : MonoBehaviour
         // A. Visuals
         if (firePoint != null)
         {
-            // Flash
             if (muzzleFlashPrefab)
             {
                 GameObject flash = Instantiate(muzzleFlashPrefab, firePoint.position, firePoint.rotation, firePoint);
                 Destroy(flash, 0.1f);
             }
-            // Bullet (Visual)
+
+            // --- BULLET SPAWNING (UPDATED) ---
             if (bulletPrefab)
             {
-                Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+                GameObject bulletObj = Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+
+                EnemyBullet bulletScript = bulletObj.GetComponent<EnemyBullet>();
+
+                // We pass the SPECIFIC 'playerHeadTarget' instead of the generic player transform
+                if (bulletScript != null && player != null)
+                {
+                    // Fallback to player.transform if head is forgotten, but warn user
+                    Transform target = playerHeadTarget != null ? playerHeadTarget : player.transform;
+
+                    bulletScript.Initialize(target, player);
+                }
             }
         }
 
@@ -134,53 +124,49 @@ public class EnemyDuelAI : MonoBehaviour
         {
             RuntimeManager.PlayOneShot(fireSound, transform.position);
         }
-
-        // C. KILL PLAYER
-        if (player != null)
-        {
-            Debug.Log($"IA : Pan ! ({difficultyProfile.enemyName} a gagné)");
-            player.Die();
-        }
     }
 
     public void ResetEnemy()
     {
         StopAllCoroutines();
 
-        // Reset Position
         transform.position = startPosition;
         transform.rotation = startRotation;
 
-        // Reset Logic
         isDead = false;
         hasFired = false;
         if (arbiter != null) arbiter.enemyHasStartedAction = false;
 
-        // Reset Animator
         if (aiAnimator)
         {
             aiAnimator.enabled = true;
             aiAnimator.Rebind();
             aiAnimator.speed = 1f;
-            aiAnimator.Play("Idle"); // Force Idle
+            aiAnimator.Play("Idle");
         }
 
-        // --- APPEL DU RESET VISUEL (Ragdoll) ---
-        if (deathHandler != null)
-        {
-            deathHandler.ResetVisuals();
-        }
+        if (deathHandler != null) deathHandler.ResetVisuals();
 
-        // Restart Loop
         duelRoutine = StartCoroutine(DuelRoutine());
     }
 
+    public void StopCombat()
+    {
+        // 1. Stop the Timer/Logic
+        StopAllCoroutines();
+
+        // 2. Set "isDead" to true prevents any future actions
+        // (Block 'FireAtPlayer', block 'RegisterDrawAction')
+        // We use this flag so we don't need a new separate bool.
+        isDead = true;
+
+        // 3. Optional: Stop the gun sound if it was just about to play or is playing?
+        // Usually handled by FMOD automatically or short one-shots, so ignored here.
+    }
     public void NotifyDeath()
     {
         isDead = true;
         if (duelRoutine != null) StopCoroutine(duelRoutine);
-
-        // On remet la vitesse normale pour l'animation de mort
         if (aiAnimator) aiAnimator.speed = 1f;
     }
 }

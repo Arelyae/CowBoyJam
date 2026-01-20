@@ -9,67 +9,96 @@ public class FailManager : MonoBehaviour
     [Header("--- UI References ---")]
     public GameObject failPanel;
 
-    [Tooltip("Set Image Type to FILLED in Inspector!")]
+    [Header("--- 1. Screen Overlay (Red Flash) ---")]
+    public Image screenOverlay;
+    [Range(0f, 1f)] public float overlayMaxAlpha = 0.6f;
+    public float overlayFadeDuration = 0.5f;
+
+    [Header("--- 2. Title Section (Top) ---")]
+    [Tooltip("Image Type must be set to FILLED in Inspector")]
     public Image backgroundFill;
     public TextMeshProUGUI titleText;
 
-    [Tooltip("Set Image Type to FILLED in Inspector!")]
+    [Header("--- 3. Reason Section (Bottom) ---")]
+    [Tooltip("Image Type must be set to FILLED in Inspector")]
     public Image decorationImage;
     public TextMeshProUGUI reasonText;
 
-    [Header("--- Timing Settings ---")]
+    [Header("--- Animation Timings ---")]
     public float delayBeforeSequence = 0.5f;
 
-    [Header("1. Title Settings")]
-    public float imageFillDuration = 0.5f;
+    [Tooltip("Duration of the Image Fill animation")]
+    public float fillDuration = 0.5f;
+
     public float delayImageToText = 0.2f;
     public float titleTypingDuration = 0.5f;
-
-    [Header("2. Reason Settings")]
-    public float delayBetweenPhases = 0.5f;
     public float reasonTypingDuration = 1.5f;
+    public float delayBetweenPhases = 0.5f;
 
     [Header("--- Audio ---")]
     public EventReference phase1Sound;
     public EventReference phase2Sound;
     public EventReference typingClickSound;
-    public EventReference skipSound; // <--- Son du Skip
+    public EventReference skipSound;
 
     // --- SKIP DATA ---
     public bool IsAnimating { get; private set; } = false;
     private Sequence _currentSeq;
     private string _finalTitle;
     private string _finalReason;
+    private bool _shouldShowOverlay; // Internal memory for Skip
 
     void Start()
     {
+        // Safety Checks
+        if (backgroundFill && backgroundFill.type != Image.Type.Filled) backgroundFill.type = Image.Type.Filled;
+        if (decorationImage && decorationImage.type != Image.Type.Filled) decorationImage.type = Image.Type.Filled;
+
         Hide();
     }
 
-    public void TriggerFailSequence(string titleContent, string reasonContent)
+    // UPDATE: Added 'bool showOverlay' argument
+    public void TriggerFailSequence(string titleContent, string reasonContent, bool showOverlay)
     {
-        // 1. Reset
         ResetUIElements();
         if (failPanel) failPanel.SetActive(true);
 
-        // 2. Memorize for Skip
         _finalTitle = titleContent;
         _finalReason = reasonContent;
-        IsAnimating = true; // <--- STARTED
+        _shouldShowOverlay = showOverlay; // Remember for Skip
+        IsAnimating = true;
 
-        // 3. Create Sequence
         _currentSeq = DOTween.Sequence().SetUpdate(true);
 
-        // --- STEP 0: INITIAL DELAY ---
+        // --- STEP 0: IMMEDIATE OVERLAY (CONDITIONAL) ---
+        if (screenOverlay)
+        {
+            // Reset to clear
+            Color c = screenOverlay.color;
+            c.a = 0f;
+            screenOverlay.color = c;
+
+            // Only animate if requested (Death)
+            if (showOverlay)
+            {
+                _currentSeq.Insert(0f, screenOverlay.DOFade(overlayMaxAlpha, overlayFadeDuration)
+                    .SetEase(Ease.OutCubic)
+                    .SetUpdate(true));
+            }
+        }
+
+        // --- STEP 1: DELAY ---
         _currentSeq.AppendInterval(delayBeforeSequence);
 
-        // --- PHASE 1: TITLE ---
+        // --- PHASE 1: BACKGROUND + TITLE ---
         _currentSeq.AppendCallback(() => PlaySound(phase1Sound));
 
         if (backgroundFill)
         {
             backgroundFill.fillAmount = 0f;
-            _currentSeq.Append(backgroundFill.DOFillAmount(1f, imageFillDuration).SetEase(Ease.OutCubic));
+            _currentSeq.Append(backgroundFill.DOFillAmount(1f, fillDuration)
+                .SetEase(Ease.OutCubic)
+                .SetUpdate(true));
         }
 
         _currentSeq.AppendInterval(delayImageToText);
@@ -82,13 +111,15 @@ public class FailManager : MonoBehaviour
         // --- WAIT ---
         _currentSeq.AppendInterval(delayBetweenPhases);
 
-        // --- PHASE 2: REASON ---
+        // --- PHASE 2: DECORATION + REASON ---
         _currentSeq.AppendCallback(() => PlaySound(phase2Sound));
 
         if (decorationImage)
         {
             decorationImage.fillAmount = 0f;
-            _currentSeq.Append(decorationImage.DOFillAmount(1f, imageFillDuration).SetEase(Ease.OutCubic));
+            _currentSeq.Append(decorationImage.DOFillAmount(1f, fillDuration)
+                .SetEase(Ease.OutCubic)
+                .SetUpdate(true));
         }
 
         _currentSeq.AppendInterval(delayImageToText);
@@ -98,29 +129,30 @@ public class FailManager : MonoBehaviour
             AddTypewriterToSequence(_currentSeq, reasonText, reasonContent, reasonTypingDuration);
         }
 
-        // --- END ---
         _currentSeq.OnComplete(() => IsAnimating = false);
     }
 
-    // --- SKIP FUNCTION ---
     public void SkipAnimation()
     {
         if (!IsAnimating) return;
 
-        // 1. Kill Sequence
         _currentSeq.Kill();
 
-        // 2. Force Final State
+        // Overlay Skip Logic
+        if (screenOverlay)
+        {
+            Color c = screenOverlay.color;
+            c.a = _shouldShowOverlay ? overlayMaxAlpha : 0f; // Respect the boolean
+            screenOverlay.color = c;
+        }
+
         if (backgroundFill) backgroundFill.fillAmount = 1f;
         if (decorationImage) decorationImage.fillAmount = 1f;
 
         if (titleText) titleText.text = _finalTitle;
         if (reasonText) reasonText.text = _finalReason;
 
-        // 3. Feedback
         PlaySound(skipSound);
-
-        // 4. Finish
         IsAnimating = false;
     }
 
@@ -136,7 +168,9 @@ public class FailManager : MonoBehaviour
                     PlaySound(typingClickSound);
                     lastLength = x.Length;
                 }
-            }, content, duration).SetEase(Ease.Linear)
+            }, content, duration)
+            .SetEase(Ease.Linear)
+            .SetUpdate(true)
         );
     }
 
@@ -149,8 +183,16 @@ public class FailManager : MonoBehaviour
 
     private void ResetUIElements()
     {
+        if (screenOverlay)
+        {
+            Color c = screenOverlay.color;
+            c.a = 0f;
+            screenOverlay.color = c;
+        }
+
         if (backgroundFill) backgroundFill.fillAmount = 0f;
         if (decorationImage) decorationImage.fillAmount = 0f;
+
         if (titleText) titleText.text = "";
         if (reasonText) reasonText.text = "";
     }

@@ -157,39 +157,53 @@ public class EndManager : MonoBehaviour
         if (gameIsOver) return;
         gameIsOver = true;
 
+        // --- 1. SILENCE THE ENEMY ---
+        // Immediately stop the AI from shooting if the player fumbled/died
+        if (enemyAI != null)
+        {
+            enemyAI.StopCombat();
+        }
+
         Debug.Log($"DEFEAT ({rawReason}) - Waiting {defeatDelay}s before freeze...");
 
-        // RESTORED: The Delay before freeze using DOTween
-        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f) // Slow down to 0.2f
-            .SetDelay(defeatDelay) // Wait for the 'Click' or death animation
+        // --- 2. SLOW MOTION SEQUENCE ---
+        // Wait for the delay (e.g. for the gunshot sound or death anim), then slow down time
+        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f)
+            .SetDelay(defeatDelay)
             .SetUpdate(true)
             .SetEase(Ease.OutQuart)
             .OnStart(() => { Time.fixedDeltaTime = 0.02f * 0.2f; });
 
-        // DETERMINE TEXT CONTENT
+        // --- 3. TRIGGER FAIL UI ---
         if (failManager)
         {
             string finalTitle = "";
             string finalReason = "";
+            bool showRedOverlay = false;
 
             if (rawReason.Contains("Dishonor") || rawReason.Contains("Premature"))
             {
+                // DISHONOR
                 finalTitle = dishonorTitle;
                 finalReason = dishonorReason;
+                showRedOverlay = false;
             }
             else if (rawReason.Contains("Jammed") || rawReason.Contains("Misfire") || rawReason.Contains("Hesitated"))
             {
+                // FUMBLE
                 finalTitle = fumbleTitle;
                 finalReason = !string.IsNullOrEmpty(fumbleReasonOverride) ? fumbleReasonOverride : rawReason;
+                showRedOverlay = false;
             }
             else
             {
+                // DEATH (Default)
                 finalTitle = deathTitle;
                 finalReason = deathReason;
+                showRedOverlay = true; // Only show blood overlay on actual death
             }
 
-            // Trigger the UI
-            failManager.TriggerFailSequence(finalTitle, finalReason);
+            failManager.TriggerFailSequence(finalTitle, finalReason, showRedOverlay);
         }
     }
 
