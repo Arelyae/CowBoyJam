@@ -16571,7 +16571,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 1
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -16656,7 +16656,7 @@ MonoBehaviour:
   m_ShadowRenderingLayers: 1
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
-  m_SoftShadowQuality: 1
+  m_SoftShadowQuality: 3
 --- !u!1 &413242168
 GameObject:
   m_ObjectHideFlags: 0
@@ -57336,7 +57336,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ca3b62e2b026cc4885e70f04d140d10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  difficultyProfile: {fileID: 11400000, guid: 509de8d5e6ec76f4b9ab3d4c87e8b4e1, type: 2}
+  difficultyProfile: {fileID: 11400000, guid: 54272d0a50e55b74d99166a30caea093, type: 2}
   deathHandler: {fileID: 1987363785}
   arbiter: {fileID: 1636871959}
   player: {fileID: 474596864}

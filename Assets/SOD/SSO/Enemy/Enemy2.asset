@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy2
   m_EditorClassIdentifier: 
   enemyName: Jame Smithee
-  minWaitTime: 2
-  maxWaitTime: 5
+  minWaitTime: 4
+  maxWaitTime: 4
   fastestDrawSpeed: 0.8
   slowestDrawSpeed: 1
   skinMaterial: {fileID: 0}
