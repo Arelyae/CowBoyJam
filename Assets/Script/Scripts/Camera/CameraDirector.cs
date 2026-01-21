@@ -29,6 +29,21 @@ public class CameraDirector : MonoBehaviour
         [Header("Orientation")]
         public bool lookAtPlayer;
         public bool lookAtEnemy;
+
+        [Header("Attachment (GoPro Mode)")]
+        [Tooltip("If TRUE, camera follows the target's position.")]
+        public bool attachToTarget;
+
+        [Header("Rotation Locks")]
+        public bool lockRotationZ = true;
+        public bool lockRotationX = true;
+        public bool lockRotationY = false;
+
+        [Header("Position Locks")]
+        public bool lockPositionX = false;
+        public bool lockPositionY = false;
+        public bool lockPositionZ = false;
+
         public bool lookForward = true;
     }
 
@@ -131,10 +146,13 @@ public class CameraDirector : MonoBehaviour
         DOTween.Kill("KillCamTween");
         if (killCamVC) killCamVC.transform.DOKill();
 
-        // 2. Turn OFF Kill Cam
+        // 2. DETACH PARENT (Crucial Safety Step)
+        if (killCamVC) killCamVC.transform.SetParent(null);
+
+        // 3. Turn OFF Kill Cam
         if (killCamVC) killCamVC.Priority = 0;
 
-        // 3. SNAP GAMEPLAY CAM TO TARGET
+        // 4. SNAP GAMEPLAY CAM TO TARGET
         if (gameplayVC != null && gameplayReturnTarget != null)
         {
             // A. Move the VC transform to the player's head immediately
@@ -154,7 +172,7 @@ public class CameraDirector : MonoBehaviour
     }
 
     // =================================================================================
-    //                                NEW SCENARIO LOGIC
+    //                                NEW SCENARIO LOGIC (Scene Splines)
     // =================================================================================
 
     void ApplyScenario(KillCamScenario s)
@@ -180,15 +198,18 @@ public class CameraDirector : MonoBehaviour
             }).SetEase(s.speedCurve).SetId("KillCamTween").SetUpdate(true);
         }
 
-        // B. Rotation Loop
-        StartRotationLoop(s.duration, s.lookForward, s.sourcePath);
+        // B. Rotation & Follow Loop
+        StartFollowAndRotateLoop(s.duration, s.lookForward, s.sourcePath,
+                                 s.attachToTarget,
+                                 s.lockRotationX, s.lockRotationY, s.lockRotationZ,
+                                 s.lockPositionX, s.lockPositionY, s.lockPositionZ);
 
         // C. Take Control
         killCamVC.Priority = 100;
     }
 
     // =================================================================================
-    //                                LEGACY PROFILE LOGIC
+    //                                LEGACY PROFILE LOGIC (Scriptable Objects)
     // =================================================================================
 
     void ApplyLegacyProfile(KillCamProfile p)
@@ -201,7 +222,6 @@ public class CameraDirector : MonoBehaviour
         killCamVC.Lens.FieldOfView = p.mainFOV;
 
         // CRITICAL FIX: Only enable Dolly if we are actually using Splines!
-        // If we don't disable it for Standard/Animated, it will override our position instantly.
         if (_dolly != null)
         {
             if (p.camMode == KillCamMode.Splines) _dolly.enabled = true;
@@ -213,19 +233,26 @@ public class CameraDirector : MonoBehaviour
             case KillCamMode.Splines:
                 ApplyLegacySpline(p);
                 break;
+
             case KillCamMode.Animated:
                 ApplyAnimatedProfile(p);
                 break;
+
             case KillCamMode.SplitScreen:
                 EnableSplitScreen(p);
-                return; // EXIT (Don't enable VC, SplitScreen uses raw cameras)
+                return; // EXIT (Don't enable VC)
+
             case KillCamMode.Standard:
             default:
-                // Now that Dolly is disabled, this line works!
+                // 1. Set Position
                 killCamVC.transform.position = p.mainWorldPos;
+                killCamVC.transform.rotation = Quaternion.Euler(p.mainWorldRot);
 
-                if (_currentTarget != null) killCamVC.transform.LookAt(_currentTarget);
-                else killCamVC.transform.rotation = Quaternion.Euler(p.mainWorldRot);
+                // 2. Start Continuous Loop
+                StartFollowAndRotateLoop(60f, false, null,
+                                         p.attachToTarget,
+                                         p.lockRotationX, p.lockRotationY, p.lockRotationZ,
+                                         p.lockPositionX, p.lockPositionY, p.lockPositionZ);
                 break;
         }
 
@@ -260,54 +287,104 @@ public class CameraDirector : MonoBehaviour
             }).SetEase(p.splineSpeedCurve).SetId("KillCamTween").SetUpdate(true);
         }
 
-        // 3. RESTORED LEGACY ROTATION LOGIC
-        DOVirtual.Float(0f, 1f, p.splineDuration, (t) =>
-        {
-            if (killCamVC == null) return;
-
-            // A. Look At Target
-            if (_currentTarget != null)
-            {
-                killCamVC.transform.LookAt(_currentTarget);
-            }
-            // B. Look Forward (Tangent)
-            else if (p.lookForward)
-            {
-                float3 pos, tangent, up;
-                sharedSplineContainer.Evaluate(t, out pos, out tangent, out up);
-                Vector3 tanVec = (Vector3)tangent;
-                Vector3 upVec = (Vector3)up;
-                if (tanVec != Vector3.zero) killCamVC.transform.rotation = Quaternion.LookRotation(tanVec, upVec);
-            }
-            // C. Manual Interpolation (Restored from old script)
-            else if (p.splinePath != null && p.splinePath.Count > 1)
-            {
-                int count = p.splinePath.Count;
-                float segmentSize = 1f / (count - 1);
-                int index = Mathf.FloorToInt(t / segmentSize);
-                if (index >= count - 1) index = count - 2;
-                float fraction = (t - (index * segmentSize)) / segmentSize;
-
-                Quaternion rotA = Quaternion.Euler(p.splinePath[index].rot);
-                Quaternion rotB = Quaternion.Euler(p.splinePath[index + 1].rot);
-                killCamVC.transform.rotation = Quaternion.Slerp(rotA, rotB, fraction);
-            }
-        }).SetId("KillCamTween").SetUpdate(true);
+        // 3. Rotation Logic (Continuous)
+        StartFollowAndRotateLoop(p.splineDuration, p.lookForward, sharedSplineContainer,
+                                 p.attachToTarget,
+                                 p.lockRotationX, p.lockRotationY, p.lockRotationZ,
+                                 p.lockPositionX, p.lockPositionY, p.lockPositionZ);
     }
 
     void ApplyAnimatedProfile(KillCamProfile p)
     {
+        // For animated, we simplify: We either rely on the Animation Curve OR the Attachment logic.
+        // Mixing both is complex, so here we prioritize the Curve, but use LookAt Logic.
+
         DOVirtual.Float(0f, 1f, p.animDuration, (t) =>
         {
             float progress = p.animCurve.Evaluate(t);
             killCamVC.transform.position = Vector3.LerpUnclamped(p.mainWorldPos, p.mainDestPos, progress);
 
+            // Continuous LookAt during animation
             if (_currentTarget != null)
                 killCamVC.transform.LookAt(_currentTarget);
             else
                 killCamVC.transform.rotation = Quaternion.SlerpUnclamped(Quaternion.Euler(p.mainWorldRot), Quaternion.Euler(p.mainDestRot), progress);
 
             killCamVC.Lens.FieldOfView = Mathf.LerpUnclamped(p.mainFOV, p.mainDestFOV, progress);
+        }).SetId("KillCamTween").SetUpdate(true);
+    }
+
+    // =================================================================================
+    //                  CORE LOOP: HANDLES ROTATION, POSITION & LOCKS
+    // =================================================================================
+
+    void StartFollowAndRotateLoop(float duration, bool lookForward, SplineContainer path,
+                                  bool isAttached,
+                                  bool lockRotX, bool lockRotY, bool lockRotZ,
+                                  bool lockPosX, bool lockPosY, bool lockPosZ)
+    {
+        // 1. Capture Initial States
+        Vector3 initialOffset = Vector3.zero;
+        Quaternion initialCameraRot = killCamVC.transform.rotation;
+        Vector3 initialTargetPos = Vector3.zero;
+
+        if (_currentTarget != null)
+        {
+            initialTargetPos = _currentTarget.position;
+            // Calculate vector from Target -> Camera
+            initialOffset = killCamVC.transform.position - _currentTarget.position;
+        }
+
+        DOVirtual.Float(0f, 1f, duration, (t) => {
+            if (killCamVC == null) return;
+
+            // --- A. POSITION (ATTACHMENT & LOCKING) ---
+            if (isAttached && _currentTarget != null)
+            {
+                // Determine which target position to use (Current vs Initial)
+                Vector3 currentTargetPos = _currentTarget.position;
+                Vector3 targetPosToUse = currentTargetPos;
+
+                if (lockPosX) targetPosToUse.x = initialTargetPos.x;
+                if (lockPosY) targetPosToUse.y = initialTargetPos.y;
+                if (lockPosZ) targetPosToUse.z = initialTargetPos.z;
+
+                // Apply offset to the blended target position
+                killCamVC.transform.position = targetPosToUse + initialOffset;
+            }
+
+            // --- B. ROTATION (LOOKAT & LOCKING) ---
+            Quaternion targetRotation = killCamVC.transform.rotation; // Default
+
+            if (_currentTarget != null)
+            {
+                // Basic LookAt
+                Vector3 direction = _currentTarget.position - killCamVC.transform.position;
+                if (direction != Vector3.zero) targetRotation = Quaternion.LookRotation(direction);
+            }
+            else if (lookForward && path != null)
+            {
+                float3 pos, tangent, up;
+                path.Evaluate(t, out pos, out tangent, out up);
+                Vector3 tanVec = (Vector3)tangent; Vector3 upVec = (Vector3)up;
+                if (tanVec != Vector3.zero) targetRotation = Quaternion.LookRotation(tanVec, upVec);
+            }
+
+            // Apply Rotation Locking
+            if (isAttached && _currentTarget != null)
+            {
+                Vector3 currentEuler = targetRotation.eulerAngles;
+                Vector3 stableEuler = initialCameraRot.eulerAngles;
+
+                float x = lockRotX ? stableEuler.x : currentEuler.x;
+                float y = lockRotY ? stableEuler.y : currentEuler.y;
+                float z = lockRotZ ? stableEuler.z : currentEuler.z;
+
+                targetRotation = Quaternion.Euler(x, y, z);
+            }
+
+            killCamVC.transform.rotation = targetRotation;
+
         }).SetId("KillCamTween").SetUpdate(true);
     }
 
@@ -322,31 +399,9 @@ public class CameraDirector : MonoBehaviour
         return null;
     }
 
-    void StartRotationLoop(float duration, bool lookForward, SplineContainer path)
-    {
-        DOVirtual.Float(0f, 1f, duration, (t) =>
-        {
-            if (killCamVC == null) return;
-
-            if (_currentTarget != null)
-            {
-                killCamVC.transform.LookAt(_currentTarget);
-            }
-            else if (lookForward && path != null)
-            {
-                float3 pos, tangent, up;
-                path.Evaluate(t, out pos, out tangent, out up);
-                Vector3 tanVec = (Vector3)tangent;
-                Vector3 upVec = (Vector3)up;
-                if (tanVec != Vector3.zero) killCamVC.transform.rotation = Quaternion.LookRotation(tanVec, upVec);
-            }
-        }).SetId("KillCamTween").SetUpdate(true);
-    }
-
     void EnableSplitScreen(KillCamProfile p)
     {
         if (killCamVC) killCamVC.Priority = 0;
-
         if (splitScreenCanvas) splitScreenCanvas.SetActive(true);
         if (auxCamA)
         {

@@ -12925,7 +12925,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 50
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: InitialModule.startColor.maxColor.b
@@ -13622,7 +13622,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.70710677, z: -0, w: 0.7071068}
+  m_LocalRotation: {x: 0, y: -0.70710677, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 9, y: 1.75, z: -22.266}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -17686,12 +17686,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 423797795}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -959.99994, y: -540.215, z: 0}
+  m_LocalScale: {x: 2.2939067, y: 2.2939067, z: 2.2939067}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 978929170}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &423968651
 PrefabInstance:
@@ -21746,7 +21746,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 50
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: InitialModule.startColor.maxColor.b
@@ -40112,14 +40112,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 967200044}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0.968, z: -39}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 87441042}
   - {fileID: 39610896}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1101582237}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &967899662
 PrefabInstance:
@@ -40691,6 +40691,7 @@ RectTransform:
   - {fileID: 1979560171}
   - {fileID: 484757716}
   - {fileID: 379560450}
+  - {fileID: 423797798}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -41570,8 +41571,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 998406739}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.00088310614, y: -0.9985497, z: -0.050969448, w: 0.01731968}
-  m_LocalPosition: {x: 1.2904564, y: 0.7173774, z: -18.804287}
+  m_LocalRotation: {x: 0.002128803, y: -0.7050183, z: 0.0021149602, w: 0.7091828}
+  m_LocalPosition: {x: 3.48, y: 1.1328895, z: -18.083632}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -41654,7 +41655,7 @@ Camera:
     height: 1
   near clip plane: 0.01
   far clip plane: 1000
-  field of view: 20
+  field of view: 15
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -46760,6 +46761,7 @@ Transform:
   - {fileID: 576665150}
   - {fileID: 832575519}
   - {fileID: 410087041}
+  - {fileID: 967200045}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1101688736
@@ -47951,6 +47953,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 195a770724577f246bf543560b8ae75d, type: 2}
   - {fileID: 11400000, guid: 37bd67c7c0abe86459ab9ad409ce0715, type: 2}
   - {fileID: 11400000, guid: baf6abd073f0c044bb6058a2e2298b10, type: 2}
+  - {fileID: 11400000, guid: 5a7030f7b55e24c43be02b6c6b251224, type: 2}
   - {fileID: 11400000, guid: 566edcd838f29bb4d85f1095820a9b5a, type: 2}
   - {fileID: 11400000, guid: 22c2cdf13482de74295efda917bf94ab, type: 2}
   - {fileID: 11400000, guid: 05b1b04dd5cfd91449e4e0b5ed55051f, type: 2}
@@ -47968,26 +47971,26 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 1.6497952
-        outSlope: 1.6497952
+        inSlope: 1.937348
+        outSlope: 1.937348
         tangentMode: 34
         weightedMode: 0
         inWeight: 0
         outWeight: 0.33333334
       - serializedVersion: 3
-        time: 0.5027976
-        value: 0.8295131
-        inSlope: 0.5950962
-        outSlope: 0.5950962
+        time: 0.5087813
+        value: 0.9856865
+        inSlope: 0.05549541
+        outSlope: 0.05549541
         tangentMode: 0
         weightedMode: 0
         inWeight: 0.33333334
-        outWeight: 0.15469056
+        outWeight: 0.18749669
       - serializedVersion: 3
         time: 1
         value: 1
-        inSlope: 0.3428924
-        outSlope: 0.3428924
+        inSlope: 0.029138792
+        outSlope: 0.029138792
         tangentMode: 34
         weightedMode: 0
         inWeight: 0.33333334
@@ -47995,8 +47998,15 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 0
-    lookAtPlayer: 1
+    lookAtPlayer: 0
     lookAtEnemy: 0
+    attachToTarget: 0
+    lockRotationZ: 0
+    lockRotationX: 0
+    lockRotationY: 0
+    lockPositionX: 0
+    lockPositionY: 0
+    lockPositionZ: 0
     lookForward: 0
 --- !u!1 &1125205826
 GameObject:
@@ -56158,7 +56168,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: EmissionModule.rateOverTime.scalar
-      value: 50
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 198279101275435388, guid: 9e03786a9517b604d8e930182607a128, type: 3}
       propertyPath: InitialModule.startColor.maxColor.b
@@ -92598,5 +92608,3 @@ SceneRoots:
   - {fileID: 1097322914}
   - {fileID: 1045294314}
   - {fileID: 978929170}
-  - {fileID: 423797798}
-  - {fileID: 967200045}
