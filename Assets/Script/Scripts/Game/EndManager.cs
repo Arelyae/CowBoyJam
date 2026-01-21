@@ -12,6 +12,10 @@ public class EndManager : MonoBehaviour
     public ScoreManager scoreManager;
     public FailManager failManager;
 
+    [Header("--- Audio & Cinematics ---")]
+    public DuelCinematographer cinematographer;
+    public DuelAudioDirector audioDirector;
+
     [Header("--- Gameplay References (Soft Reset) ---")]
     public DuelController playerController;
     public EnemyDuelAI enemyAI;
@@ -214,19 +218,34 @@ public class EndManager : MonoBehaviour
 
         // 1. Global Cleanup
         DOTween.KillAll();
-
-        // 2. Reset Time
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
 
-        // 3. Reset Individual Components
+        // 2. Reset Individual Components
         if (failManager) failManager.Hide();
         if (scoreManager) scoreManager.ResetScore();
 
+        // 3. RESET CINEMATICS (Visuals)
+        // Force the cinematic cameras to turn off so Gameplay Cam (Priority 10) takes over immediately
+        if (cinematographer != null)
+        {
+            cinematographer.StopCinematics();
+        }
+
+        // 4. RESET AUDIO
+        // Stops the music and clears the FMOD marker flags, then Restarts
+        if (audioDirector != null)
+        {
+            audioDirector.StopMusic();
+
+            // This restarts the loop: Music starts -> Hits first marker -> Camera cut happens
+            audioDirector.StartMusic();
+        }
+
+        // 5. Reset Gameplay Actors
         if (cameraDirector) cameraDirector.ResetCamera();
         if (playerController) playerController.ResetPlayer();
         if (enemyAI) enemyAI.ResetEnemy();
-
     }
 }

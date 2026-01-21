@@ -19,7 +19,7 @@ public class EnemyDuelAI : MonoBehaviour
 
     [Header("--- Target Reference (NEW) ---")]
     [Tooltip("Drag the Player's Camera or Head object here so the AI aims at the face.")]
-    public Transform playerHeadTarget; // <--- ASSIGN THIS IN INSPECTOR (Main Camera)
+    public Transform playerHeadTarget; 
 
     [Header("--- Combat VFX & Audio ---")]
     public Transform firePoint;
