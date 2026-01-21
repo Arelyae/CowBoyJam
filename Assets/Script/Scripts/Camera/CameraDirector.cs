@@ -1,153 +1,298 @@
 using UnityEngine;
 using System.Collections.Generic;
 using DG.Tweening;
-using System.Linq; // Needed for Linq queries (Min, Where, ToList)
+using Unity.Cinemachine;       // Cinemachine 3.x
+using UnityEngine.Splines;     // Unity Splines
+using Unity.Mathematics;       // Required for Spline math
+using System.Linq;
+
+// RESOLVE CONFLICT: Explicitly tell Unity to use its own Random engine
+using Random = UnityEngine.Random;
 
 public class CameraDirector : MonoBehaviour
 {
-    [Header("--- 1. The Real Cameras ---")]
-    public Camera mainCamera;
+    // =================================================================================
+    //                                DATA STRUCTURES
+    // =================================================================================
+
+    [System.Serializable]
+    public class KillCamScenario
+    {
+        public string name = "New Kill Cam";
+        [Tooltip("Drag a GameObject with a SplineContainer from your scene here.")]
+        public SplineContainer sourcePath;
+
+        [Header("Timing")]
+        public float duration = 4.0f;
+        public AnimationCurve speedCurve = AnimationCurve.Linear(0, 0, 1, 1);
+
+        [Header("Orientation")]
+        public bool lookAtPlayer;
+        public bool lookAtEnemy;
+        public bool lookForward = true;
+    }
+
+    // =================================================================================
+    //                                  INSPECTOR
+    // =================================================================================
+
+    [Header("--- Cinemachine 3 Setup ---")]
+    [Tooltip("The camera used for Kill Cams (Must have SplineDolly).")]
+    public CinemachineCamera killCamVC;
+
+    [Tooltip("The camera used for normal gameplay (Priority 10).")]
+    public CinemachineCamera gameplayVC;
+
+    [Tooltip("REQUIRED for Legacy Profiles: An empty SplineContainer in the scene.")]
+    public SplineContainer sharedSplineContainer;
+
+    [Header("--- Reset Settings ---")]
+    [Tooltip("Drag the object where the camera should snap back to (e.g. 'CamHolder' inside your Player).")]
+    public Transform gameplayReturnTarget;
+
+    [Header("--- Actors ---")]
+    public Transform playerTransform;
+    public Transform enemyTransform;
+
+    [Header("--- UI & Aux ---")]
+    public GameObject splitScreenCanvas;
     public Camera auxCamA;
     public Camera auxCamB;
 
-    [Header("--- 2. UI ---")]
-    public GameObject splitScreenCanvas;
-
-    [Header("--- 3. Profiles ---")]
+    [Header("--- Legacy Profiles ---")]
     public List<KillCamProfile> profiles;
 
-    // Internal State
-    private Vector3 _startPos;
-    private Quaternion _startRot;
-    private float _startFOV;
+    [Header("--- New Scenarios ---")]
+    public List<KillCamScenario> killCamScenarios;
 
-    // TRACKING: Maps Profile -> Times Used
-    private Dictionary<KillCamProfile, int> _usageMap = new Dictionary<KillCamProfile, int>();
+    // =================================================================================
+    //                                INTERNAL STATE
+    // =================================================================================
+
+    private Dictionary<object, int> _usageMap = new Dictionary<object, int>();
+    private CinemachineSplineDolly _dolly;
+    private Transform _currentTarget;
 
     void Start()
     {
-        if (mainCamera == null) mainCamera = Camera.main;
-
-        _startPos = mainCamera.transform.position;
-        _startRot = mainCamera.transform.rotation;
-        _startFOV = mainCamera.fieldOfView;
-
-        // Initialize Usage Map
-        foreach (var p in profiles)
+        if (killCamVC)
         {
-            if (!_usageMap.ContainsKey(p)) _usageMap.Add(p, 0);
+            _dolly = killCamVC.GetComponent<CinemachineSplineDolly>();
+            killCamVC.Priority = 0; // Ensure it starts off
         }
+
+        if (gameplayVC)
+        {
+            gameplayVC.Priority = 10; // Ensure gameplay starts on
+        }
+
+        // Initialize Fairness Map
+        foreach (var p in profiles) { if (!_usageMap.ContainsKey(p)) _usageMap.Add(p, 0); }
+        foreach (var s in killCamScenarios) { if (!_usageMap.ContainsKey(s)) _usageMap.Add(s, 0); }
 
         ResetCamera();
     }
 
+    // =================================================================================
+    //                                MAIN LOGIC
+    // =================================================================================
+
     public void TriggerKillCam()
     {
-        if (profiles.Count == 0) return;
+        // 1. Sync Map
+        foreach (var p in profiles) { if (!_usageMap.ContainsKey(p)) _usageMap.Add(p, 0); }
+        foreach (var s in killCamScenarios) { if (!_usageMap.ContainsKey(s)) _usageMap.Add(s, 0); }
+
+        if (_usageMap.Count == 0 || killCamVC == null) return;
 
         Debug.Log("--- KILL CAM TRIGGERED ---");
 
-        // 1. Ensure map is up to date (in case profiles were added dynamically)
-        foreach (var p in profiles)
-        {
-            if (!_usageMap.ContainsKey(p)) _usageMap.Add(p, 0);
-        }
+        // 2. Selection Logic
+        int minUsage = _usageMap.Values.Min();
+        List<object> candidates = new List<object>();
+        candidates.AddRange(profiles.Where(p => _usageMap[p] == minUsage));
+        candidates.AddRange(killCamScenarios.Where(s => _usageMap[s] == minUsage));
 
-        // 2. FIND LEAST USED COUNT
-        int minUsage = int.MaxValue;
-        foreach (var p in profiles)
-        {
-            if (_usageMap[p] < minUsage) minUsage = _usageMap[p];
-        }
+        if (candidates.Count == 0) return;
 
-        // 3. GATHER CANDIDATES (All profiles that have the minimum usage)
-        List<KillCamProfile> candidates = new List<KillCamProfile>();
-        foreach (var p in profiles)
-        {
-            if (_usageMap[p] == minUsage) candidates.Add(p);
-        }
+        object chosen = candidates[Random.Range(0, candidates.Count)];
+        _usageMap[chosen]++;
 
-        // 4. PICK RANDOM FROM LEAST USED
-        KillCamProfile chosenProfile = candidates[Random.Range(0, candidates.Count)];
-
-        // 5. UPDATE COUNT
-        _usageMap[chosenProfile]++;
-        Debug.Log($"Selected '{chosenProfile.name}' (Usage: {_usageMap[chosenProfile]})");
-
-        ApplyProfile(chosenProfile);
+        // 3. Dispatch
+        if (chosen is KillCamProfile profile) ApplyLegacyProfile(profile);
+        else if (chosen is KillCamScenario scenario) ApplyScenario(scenario);
     }
 
-    void ApplyProfile(KillCamProfile p)
+    public void ResetCamera()
+    {
+        Debug.Log("--- RESET CAMERA ---");
+
+        // 1. Kill all Animations
+        DOTween.Kill("KillCamTween");
+        if (killCamVC) killCamVC.transform.DOKill();
+
+        // 2. Turn OFF Kill Cam
+        if (killCamVC) killCamVC.Priority = 0;
+
+        // 3. SNAP GAMEPLAY CAM TO TARGET
+        if (gameplayVC != null && gameplayReturnTarget != null)
+        {
+            // A. Move the VC transform to the player's head immediately
+            gameplayVC.transform.position = gameplayReturnTarget.position;
+            gameplayVC.transform.rotation = gameplayReturnTarget.rotation;
+
+            // B. Ensure Priority is high enough to take over
+            gameplayVC.Priority = 10;
+        }
+        else
+        {
+            Debug.LogWarning("ResetCamera: 'Gameplay VC' or 'Return Target' is missing!");
+        }
+
+        _currentTarget = null;
+        DisableSplitScreen();
+    }
+
+    // =================================================================================
+    //                                NEW SCENARIO LOGIC
+    // =================================================================================
+
+    void ApplyScenario(KillCamScenario s)
     {
         DisableSplitScreen();
-        mainCamera.transform.DOKill();
-        mainCamera.DOKill();
+        killCamVC.transform.DOKill();
+        DOTween.Kill("KillCamTween");
 
-        // Snap to Start Position
-        mainCamera.transform.position = p.mainWorldPos;
-        mainCamera.transform.rotation = Quaternion.Euler(p.mainWorldRot);
-        mainCamera.fieldOfView = p.mainFOV;
+        // IMPORTANT: Enable the Dolly for splines
+        if (_dolly != null) _dolly.enabled = true;
+
+        _currentTarget = GetTarget(s.lookAtEnemy, s.lookAtPlayer);
+
+        // A. Assign Spline
+        if (_dolly != null && s.sourcePath != null)
+        {
+            _dolly.Spline = s.sourcePath;
+            _dolly.CameraPosition = 0f;
+
+            DOVirtual.Float(0f, 1f, s.duration, (val) =>
+            {
+                if (_dolly != null) _dolly.CameraPosition = val;
+            }).SetEase(s.speedCurve).SetId("KillCamTween").SetUpdate(true);
+        }
+
+        // B. Rotation Loop
+        StartRotationLoop(s.duration, s.lookForward, s.sourcePath);
+
+        // C. Take Control
+        killCamVC.Priority = 100;
+    }
+
+    // =================================================================================
+    //                                LEGACY PROFILE LOGIC
+    // =================================================================================
+
+    void ApplyLegacyProfile(KillCamProfile p)
+    {
+        DisableSplitScreen();
+        killCamVC.transform.DOKill();
+        DOTween.Kill("KillCamTween");
+
+        _currentTarget = GetTarget(p.lookAtEnemy, p.lookAtPlayer);
+        killCamVC.Lens.FieldOfView = p.mainFOV;
+
+        // CRITICAL FIX: Only enable Dolly if we are actually using Splines!
+        // If we don't disable it for Standard/Animated, it will override our position instantly.
+        if (_dolly != null)
+        {
+            if (p.camMode == KillCamMode.Splines) _dolly.enabled = true;
+            else _dolly.enabled = false;
+        }
 
         switch (p.camMode)
         {
             case KillCamMode.Splines:
-                ApplySplineProfile(p);
+                ApplyLegacySpline(p);
                 break;
-
             case KillCamMode.Animated:
                 ApplyAnimatedProfile(p);
                 break;
-
             case KillCamMode.SplitScreen:
                 EnableSplitScreen(p);
-                break;
-
+                return; // EXIT (Don't enable VC, SplitScreen uses raw cameras)
             case KillCamMode.Standard:
             default:
+                // Now that Dolly is disabled, this line works!
+                killCamVC.transform.position = p.mainWorldPos;
+
+                if (_currentTarget != null) killCamVC.transform.LookAt(_currentTarget);
+                else killCamVC.transform.rotation = Quaternion.Euler(p.mainWorldRot);
                 break;
         }
+
+        killCamVC.Priority = 100;
     }
 
-    void ApplySplineProfile(KillCamProfile p)
+    void ApplyLegacySpline(KillCamProfile p)
     {
-        if (p.splinePath == null || p.splinePath.Count == 0) return;
+        if (sharedSplineContainer == null) return;
 
-        // Prepare Data
-        Vector3[] pathPositions = new Vector3[p.splinePath.Count];
-        for (int i = 0; i < p.splinePath.Count; i++) pathPositions[i] = p.splinePath[i].pos;
+        // 1. Build Spline
+        Spline spline = sharedSplineContainer.Spline;
+        if (spline == null) spline = sharedSplineContainer.AddSpline();
+        spline.Clear();
+        sharedSplineContainer.transform.position = Vector3.zero;
+        sharedSplineContainer.transform.rotation = Quaternion.identity;
 
-        mainCamera.transform.position = p.mainWorldPos;
-
-        // Position Tween
-        var pathTween = mainCamera.transform.DOPath(pathPositions, p.splineDuration, PathType.CatmullRom);
-        pathTween.SetEase(p.splineSpeedCurve).SetOptions(false).SetUpdate(true);
-
-        // Rotation Logic
-        if (p.lookForward)
+        if (p.splinePath != null)
         {
-            pathTween.SetLookAt(0.01f);
+            foreach (var point in p.splinePath)
+                spline.Add(new BezierKnot(point.pos), TangentMode.AutoSmooth);
         }
-        else
+
+        // 2. Animate Dolly
+        if (_dolly != null)
         {
-            // Custom Rotation Interpolation
-            DOVirtual.Float(0f, 1f, p.splineDuration, (t) =>
+            _dolly.Spline = sharedSplineContainer;
+            _dolly.CameraPosition = 0f;
+            DOVirtual.Float(0f, 1f, p.splineDuration, (val) =>
             {
-                List<Quaternion> rotKeyframes = new List<Quaternion>();
-                rotKeyframes.Add(Quaternion.Euler(p.mainWorldRot)); // Start Rot
-                foreach (var point in p.splinePath) rotKeyframes.Add(Quaternion.Euler(point.rot));
+                if (_dolly != null) _dolly.CameraPosition = val;
+            }).SetEase(p.splineSpeedCurve).SetId("KillCamTween").SetUpdate(true);
+        }
 
-                int count = rotKeyframes.Count;
-                if (count < 2) return;
+        // 3. RESTORED LEGACY ROTATION LOGIC
+        DOVirtual.Float(0f, 1f, p.splineDuration, (t) =>
+        {
+            if (killCamVC == null) return;
 
+            // A. Look At Target
+            if (_currentTarget != null)
+            {
+                killCamVC.transform.LookAt(_currentTarget);
+            }
+            // B. Look Forward (Tangent)
+            else if (p.lookForward)
+            {
+                float3 pos, tangent, up;
+                sharedSplineContainer.Evaluate(t, out pos, out tangent, out up);
+                Vector3 tanVec = (Vector3)tangent;
+                Vector3 upVec = (Vector3)up;
+                if (tanVec != Vector3.zero) killCamVC.transform.rotation = Quaternion.LookRotation(tanVec, upVec);
+            }
+            // C. Manual Interpolation (Restored from old script)
+            else if (p.splinePath != null && p.splinePath.Count > 1)
+            {
+                int count = p.splinePath.Count;
                 float segmentSize = 1f / (count - 1);
                 int index = Mathf.FloorToInt(t / segmentSize);
                 if (index >= count - 1) index = count - 2;
-
                 float fraction = (t - (index * segmentSize)) / segmentSize;
-                mainCamera.transform.rotation = Quaternion.Slerp(rotKeyframes[index], rotKeyframes[index + 1], fraction);
 
-            }).SetEase(p.splineSpeedCurve).SetUpdate(true);
-        }
+                Quaternion rotA = Quaternion.Euler(p.splinePath[index].rot);
+                Quaternion rotB = Quaternion.Euler(p.splinePath[index + 1].rot);
+                killCamVC.transform.rotation = Quaternion.Slerp(rotA, rotB, fraction);
+            }
+        }).SetId("KillCamTween").SetUpdate(true);
     }
 
     void ApplyAnimatedProfile(KillCamProfile p)
@@ -155,14 +300,53 @@ public class CameraDirector : MonoBehaviour
         DOVirtual.Float(0f, 1f, p.animDuration, (t) =>
         {
             float progress = p.animCurve.Evaluate(t);
-            mainCamera.transform.position = Vector3.LerpUnclamped(p.mainWorldPos, p.mainDestPos, progress);
-            mainCamera.transform.rotation = Quaternion.SlerpUnclamped(Quaternion.Euler(p.mainWorldRot), Quaternion.Euler(p.mainDestRot), progress);
-            mainCamera.fieldOfView = Mathf.LerpUnclamped(p.mainFOV, p.mainDestFOV, progress);
-        }).SetUpdate(true);
+            killCamVC.transform.position = Vector3.LerpUnclamped(p.mainWorldPos, p.mainDestPos, progress);
+
+            if (_currentTarget != null)
+                killCamVC.transform.LookAt(_currentTarget);
+            else
+                killCamVC.transform.rotation = Quaternion.SlerpUnclamped(Quaternion.Euler(p.mainWorldRot), Quaternion.Euler(p.mainDestRot), progress);
+
+            killCamVC.Lens.FieldOfView = Mathf.LerpUnclamped(p.mainFOV, p.mainDestFOV, progress);
+        }).SetId("KillCamTween").SetUpdate(true);
+    }
+
+    // =================================================================================
+    //                                HELPERS
+    // =================================================================================
+
+    Transform GetTarget(bool lookEnemy, bool lookPlayer)
+    {
+        if (lookEnemy && enemyTransform != null) return enemyTransform;
+        if (lookPlayer && playerTransform != null) return playerTransform;
+        return null;
+    }
+
+    void StartRotationLoop(float duration, bool lookForward, SplineContainer path)
+    {
+        DOVirtual.Float(0f, 1f, duration, (t) =>
+        {
+            if (killCamVC == null) return;
+
+            if (_currentTarget != null)
+            {
+                killCamVC.transform.LookAt(_currentTarget);
+            }
+            else if (lookForward && path != null)
+            {
+                float3 pos, tangent, up;
+                path.Evaluate(t, out pos, out tangent, out up);
+                Vector3 tanVec = (Vector3)tangent;
+                Vector3 upVec = (Vector3)up;
+                if (tanVec != Vector3.zero) killCamVC.transform.rotation = Quaternion.LookRotation(tanVec, upVec);
+            }
+        }).SetId("KillCamTween").SetUpdate(true);
     }
 
     void EnableSplitScreen(KillCamProfile p)
     {
+        if (killCamVC) killCamVC.Priority = 0;
+
         if (splitScreenCanvas) splitScreenCanvas.SetActive(true);
         if (auxCamA)
         {
@@ -170,6 +354,8 @@ public class CameraDirector : MonoBehaviour
             auxCamA.fieldOfView = p.camA_FOV;
             auxCamA.transform.position = p.camA_WorldPos;
             auxCamA.transform.rotation = Quaternion.Euler(p.camA_WorldRot);
+            if (p.lookAtPlayer && playerTransform) auxCamA.transform.LookAt(playerTransform);
+            if (p.lookAtEnemy && enemyTransform) auxCamA.transform.LookAt(enemyTransform);
         }
         if (auxCamB)
         {
@@ -186,74 +372,4 @@ public class CameraDirector : MonoBehaviour
         if (auxCamA) auxCamA.gameObject.SetActive(false);
         if (auxCamB) auxCamB.gameObject.SetActive(false);
     }
-
-    public void ResetCamera()
-    {
-        DisableSplitScreen();
-        mainCamera.transform.DOKill();
-        if (mainCamera.GetComponent<Camera>()) mainCamera.GetComponent<Camera>().DOKill();
-
-        mainCamera.transform.position = _startPos;
-        mainCamera.transform.rotation = _startRot;
-        mainCamera.fieldOfView = _startFOV;
-    }
-
-#if UNITY_EDITOR
-    [Header("--- RECORDING TOOL ---")]
-    public KillCamProfile profileToRecord;
-
-    [ContextMenu("1. Record START Positions")]
-    public void RecordStartPositions()
-    {
-        if (profileToRecord == null) { Debug.LogError("Assign a Profile first!"); return; }
-        if (mainCamera)
-        {
-            profileToRecord.mainWorldPos = mainCamera.transform.position;
-            profileToRecord.mainWorldRot = mainCamera.transform.eulerAngles;
-            profileToRecord.mainFOV = mainCamera.fieldOfView;
-            Debug.Log($"Recorded START for '{profileToRecord.name}'");
-        }
-        if (auxCamA) { profileToRecord.camA_WorldPos = auxCamA.transform.position; profileToRecord.camA_WorldRot = auxCamA.transform.eulerAngles; profileToRecord.camA_FOV = auxCamA.fieldOfView; }
-        if (auxCamB) { profileToRecord.camB_WorldPos = auxCamB.transform.position; profileToRecord.camB_WorldRot = auxCamB.transform.eulerAngles; profileToRecord.camB_FOV = auxCamB.fieldOfView; }
-        UnityEditor.EditorUtility.SetDirty(profileToRecord);
-    }
-
-    [ContextMenu("2. Record DESTINATION Positions")]
-    public void RecordDestinationPositions()
-    {
-        if (profileToRecord == null) { Debug.LogError("Assign a Profile first!"); return; }
-        if (mainCamera)
-        {
-            profileToRecord.mainDestPos = mainCamera.transform.position;
-            profileToRecord.mainDestRot = mainCamera.transform.eulerAngles;
-            profileToRecord.mainDestFOV = mainCamera.fieldOfView;
-            Debug.Log($"Recorded DESTINATION for '{profileToRecord.name}'");
-        }
-        UnityEditor.EditorUtility.SetDirty(profileToRecord);
-    }
-
-    [ContextMenu("3. Add Current Pos/Rot to Spline")]
-    public void AddSplinePoint()
-    {
-        if (profileToRecord == null) { Debug.LogError("Assign a Profile first!"); return; }
-        if (mainCamera)
-        {
-            SplinePoint sp = new SplinePoint();
-            sp.pos = mainCamera.transform.position;
-            sp.rot = mainCamera.transform.eulerAngles;
-            profileToRecord.splinePath.Add(sp);
-            Debug.Log($"Added Spline Point #{profileToRecord.splinePath.Count} to '{profileToRecord.name}'");
-        }
-        UnityEditor.EditorUtility.SetDirty(profileToRecord);
-    }
-
-    [ContextMenu("4. Clear Spline Points")]
-    public void ClearSpline()
-    {
-        if (profileToRecord == null) return;
-        profileToRecord.splinePath.Clear();
-        Debug.Log("Spline cleared.");
-        UnityEditor.EditorUtility.SetDirty(profileToRecord);
-    }
-#endif
 }
