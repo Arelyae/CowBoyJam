@@ -17,9 +17,9 @@ public class EnemyDuelAI : MonoBehaviour
     public Animator aiAnimator;
     public Renderer aiRenderer;
 
-    [Header("--- Target Reference (NEW) ---")]
+    [Header("--- Target Reference ---")]
     [Tooltip("Drag the Player's Camera or Head object here so the AI aims at the face.")]
-    public Transform playerHeadTarget; 
+    public Transform playerHeadTarget;
 
     [Header("--- Combat VFX & Audio ---")]
     public Transform firePoint;
@@ -35,24 +35,42 @@ public class EnemyDuelAI : MonoBehaviour
 
     void Start()
     {
+        startPosition = transform.position;
+        startRotation = transform.rotation;
+
         if (difficultyProfile == null)
         {
             Debug.LogError("ERROR: No Difficulty Profile assigned!");
             return;
         }
 
-        if (aiRenderer != null && difficultyProfile.skinMaterial != null)
-        {
-            aiRenderer.material = difficultyProfile.skinMaterial;
-        }
-
-        if (aiAnimator) aiAnimator.speed = 1f;
-
-        startPosition = transform.position;
-        startRotation = transform.rotation;
+        // Initialize Appearance
+        UpdateVisuals();
 
         ResetEnemy();
     }
+
+    // --- NEW: CALLED BY PROGRESSION MANAGER ---
+    public void UpdateProfile(DuelEnemyProfile newProfile)
+    {
+        if (newProfile == null) return;
+
+        this.difficultyProfile = newProfile;
+
+        // Update Skin immediately
+        UpdateVisuals();
+
+        Debug.Log($"ENEMY AI: Profile swapped to {newProfile.name}");
+    }
+
+    private void UpdateVisuals()
+    {
+        if (aiRenderer != null && difficultyProfile != null && difficultyProfile.skinMaterial != null)
+        {
+            aiRenderer.material = difficultyProfile.skinMaterial;
+        }
+    }
+    // ------------------------------------------
 
     public void RegisterDrawAction()
     {
@@ -66,6 +84,7 @@ public class EnemyDuelAI : MonoBehaviour
 
     IEnumerator DuelRoutine()
     {
+        // Use stats from the CURRENT difficultyProfile
         float waitTime = Random.Range(difficultyProfile.minWaitTime, difficultyProfile.maxWaitTime);
         yield return new WaitForSeconds(waitTime);
 
@@ -101,19 +120,14 @@ public class EnemyDuelAI : MonoBehaviour
                 Destroy(flash, 0.1f);
             }
 
-            // --- BULLET SPAWNING (UPDATED) ---
             if (bulletPrefab)
             {
                 GameObject bulletObj = Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
-
                 EnemyBullet bulletScript = bulletObj.GetComponent<EnemyBullet>();
 
-                // We pass the SPECIFIC 'playerHeadTarget' instead of the generic player transform
                 if (bulletScript != null && player != null)
                 {
-                    // Fallback to player.transform if head is forgotten, but warn user
                     Transform target = playerHeadTarget != null ? playerHeadTarget : player.transform;
-
                     bulletScript.Initialize(target, player);
                 }
             }
@@ -147,22 +161,19 @@ public class EnemyDuelAI : MonoBehaviour
 
         if (deathHandler != null) deathHandler.ResetVisuals();
 
-        duelRoutine = StartCoroutine(DuelRoutine());
+        // Restart routine with potentially new stats
+        if (difficultyProfile != null)
+        {
+            duelRoutine = StartCoroutine(DuelRoutine());
+        }
     }
 
     public void StopCombat()
     {
-        // 1. Stop the Timer/Logic
         StopAllCoroutines();
-
-        // 2. Set "isDead" to true prevents any future actions
-        // (Block 'FireAtPlayer', block 'RegisterDrawAction')
-        // We use this flag so we don't need a new separate bool.
         isDead = true;
-
-        // 3. Optional: Stop the gun sound if it was just about to play or is playing?
-        // Usually handled by FMOD automatically or short one-shots, so ignored here.
     }
+
     public void NotifyDeath()
     {
         isDead = true;

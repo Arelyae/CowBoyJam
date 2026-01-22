@@ -12,10 +12,10 @@ public class EndManager : MonoBehaviour
     public ScoreManager scoreManager;
     public FailManager failManager;
 
-    [Header("--- MODE: TUTORIAL (Assign ONLY in Tutorial Scene) ---")]
-    public TutorialManager tutorialManager; // <--- NEW: Forces a different reset path
+    [Header("--- MODE: TUTORIAL ---")]
+    public TutorialManager tutorialManager;
 
-    [Header("--- MODE: DUEL (Standard) ---")]
+    [Header("--- MODE: DUEL ---")]
     public DuelCinematographer cinematographer;
     public DuelAudioDirector audioDirector;
     public EnemyDuelAI enemyAI;
@@ -24,26 +24,22 @@ public class EndManager : MonoBehaviour
     [Header("--- Shared References ---")]
     public DuelController playerController;
 
-    [Header("--- Victory Settings (Slow Motion) ---")]
+    [Header("--- Victory Settings ---")]
     public float delayBeforeSlowMo = 0.1f;
     public float targetTimeScale = 0.1f;
     public float slowMoDuration = 1.5f;
     public Ease slowMoEase = Ease.OutExpo;
 
     [Header("--- Defeat Settings ---")]
-    [Tooltip("Wait time in seconds before freezing (Allows hearing the 'Click' or seeing the death)")]
     public float defeatDelay = 0.8f;
 
     [Header("--- FAIL SCREEN STRINGS ---")]
-    [Header("1. Death")]
     public string deathTitle = "YOU DIED";
     [TextArea] public string deathReason = "Shot through the heart.";
 
-    [Header("2. Dishonor (Premature Shot)")]
     public string dishonorTitle = "DISHONORABLE";
     [TextArea] public string dishonorReason = "You fired before the draw.";
 
-    [Header("3. Fumble (Misfire/Jam)")]
     public string fumbleTitle = "FUMBLE";
     [Tooltip("Leave empty to use dynamic reason.")]
     [TextArea] public string fumbleReasonOverride = "";
@@ -63,7 +59,6 @@ public class EndManager : MonoBehaviour
 
     void Start()
     {
-        // Ensure clean start state
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
@@ -74,24 +69,16 @@ public class EndManager : MonoBehaviour
     {
         if (!gameIsOver) return;
 
-        // --- INPUT DETECTION ---
+        // We ALWAYS listen for input here to allow skipping animations.
         bool pressedRestart = false;
 
-        // 1. Check your Input System Action
-        if (reloadAction != null && reloadAction.action.WasPressedThisFrame())
-        {
-            pressedRestart = true;
-        }
-        // 2. Hard check for Keyboard 'R'
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            pressedRestart = true;
-        }
-        // 3. Hard check for Gamepad North (Triangle/Y)
-        if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame)
-        {
-            pressedRestart = true;
-        }
+        if (reloadAction != null && reloadAction.action.WasPressedThisFrame()) pressedRestart = true;
+        if (Input.GetKeyDown(KeyCode.R)) pressedRestart = true;
+        if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame) pressedRestart = true;
+
+        // Also check South Button (A/X) specifically for skipping score text, 
+        // as players often mash 'A' to skip.
+        if (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame) pressedRestart = true;
 
         if (pressedRestart)
         {
@@ -99,31 +86,34 @@ public class EndManager : MonoBehaviour
         }
     }
 
-    // --- INPUT HANDLING PRIORITY ---
     private void HandleResetInput()
     {
-        // PRIORITY 1: Fail Screen Animation Skip
-        if (failManager != null && failManager.gameObject.activeInHierarchy)
+        // PRIORITY 1: Skip Fail Animation
+        if (failManager != null && failManager.IsAnimating)
         {
-            if (failManager.IsAnimating)
-            {
-                failManager.SkipAnimation();
-                return;
-            }
+            failManager.SkipAnimation();
+            return; // Stop here
         }
 
-        // PRIORITY 2: Victory Screen Animation Skip
-        if (scoreManager != null && scoreManager.gameObject.activeInHierarchy)
+        // PRIORITY 2: Skip Score/Victory Animation
+        if (scoreManager != null && scoreManager.IsAnimating)
         {
-            if (scoreManager.IsAnimating)
-            {
-                scoreManager.SkipAnimation();
-                return;
-            }
+            scoreManager.SkipAnimation();
+            return; // Stop here
         }
 
-        // PRIORITY 3: Actual Restart
-        RestartGame();
+        // PRIORITY 3: BLOCKER - Game Progression Logic
+        // If the Score Screen is finished animating and waiting for input (Prompts are visible),
+        // we DO NOT trigger a generic restart here. 
+        // We yield control to the GameProgressionManager which listens for specific keys.
+        if (scoreManager != null && scoreManager.AreInputsActive)
+        {
+            return;
+        }
+
+        // PRIORITY 4: Standard Restart (Fail Screen or Fallback)
+        // Only runs if we are NOT on the Victory Input screen.
+        RestartGame(resetTotalScore: false);
     }
 
     // --- VICTORY LOGIC ---
@@ -133,14 +123,9 @@ public class EndManager : MonoBehaviour
         gameIsOver = true;
 
         if (cameraDirector != null) cameraDirector.TriggerKillCam();
-
-        // Ensure Fail UI is hidden
         if (failManager) failManager.Hide();
-
-        // Show Score
         if (scoreManager) scoreManager.DisplayScore();
 
-        // Start slow motion
         StartCoroutine(SlowMotionSequence());
     }
 
@@ -148,7 +133,6 @@ public class EndManager : MonoBehaviour
     {
         if (delayBeforeSlowMo > 0) yield return new WaitForSeconds(delayBeforeSlowMo);
 
-        // Tween TimeScale smoothly
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, targetTimeScale, slowMoDuration)
             .SetUpdate(true)
             .SetEase(slowMoEase);
@@ -162,103 +146,72 @@ public class EndManager : MonoBehaviour
         if (gameIsOver) return;
         gameIsOver = true;
 
-        // --- 1. SILENCE THE ENEMY ---
-        if (enemyAI != null)
-        {
-            enemyAI.StopCombat();
-        }
+        if (enemyAI != null) enemyAI.StopCombat();
 
-        Debug.Log($"DEFEAT ({rawReason}) - Waiting {defeatDelay}s before freeze...");
+        if (scoreManager) scoreManager.ResetScore();
 
-        // --- 2. SLOW MOTION SEQUENCE ---
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f)
             .SetDelay(defeatDelay)
             .SetUpdate(true)
             .SetEase(Ease.OutQuart)
             .OnStart(() => { Time.fixedDeltaTime = 0.02f * 0.2f; });
 
-        // --- 3. TRIGGER FAIL UI ---
         if (failManager)
         {
-            string finalTitle = "";
-            string finalReason = "";
-            bool showRedOverlay = false;
+            string finalTitle = deathTitle;
+            string finalReason = deathReason;
+            bool showRedOverlay = true;
 
             if (rawReason.Contains("Dishonor") || rawReason.Contains("Premature"))
             {
-                // DISHONOR
                 finalTitle = dishonorTitle;
                 finalReason = dishonorReason;
                 showRedOverlay = false;
             }
             else if (rawReason.Contains("Jammed") || rawReason.Contains("Misfire") || rawReason.Contains("Hesitated"))
             {
-                // FUMBLE
                 finalTitle = fumbleTitle;
                 finalReason = !string.IsNullOrEmpty(fumbleReasonOverride) ? fumbleReasonOverride : rawReason;
                 showRedOverlay = false;
-            }
-            else
-            {
-                // DEATH (Default)
-                finalTitle = deathTitle;
-                finalReason = deathReason;
-                showRedOverlay = true;
             }
 
             failManager.TriggerFailSequence(finalTitle, finalReason, showRedOverlay);
         }
     }
 
-    // --- SOFT RESET ---
-    public void RestartGame()
+    // --- RESET LOGIC ---
+    public void RestartGame(bool resetTotalScore = true)
     {
-        Debug.Log("--- SOFT RESET ---");
+        Debug.Log($"--- RESETTING GAME (Wipe Score: {resetTotalScore}) ---");
 
-        // 1. Global Cleanup
         DOTween.KillAll();
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
 
-        // 2. Reset UI
         if (failManager) failManager.Hide();
-        if (scoreManager) scoreManager.ResetScore();
 
-        // 3. CHECK: TUTORIAL OR DUEL?
+        if (scoreManager)
+        {
+            scoreManager.ResetScore();
+            // Note: If you stored persistent data in ScoreManager, clear it here if resetTotalScore is true
+        }
+
         if (tutorialManager != null)
         {
-            // === PATH A: TUTORIAL MODE ===
-            // Just force the target upright and holster the gun instantly.
             tutorialManager.ForceReset();
         }
         else
         {
-            // === PATH B: DUEL MODE (Complex) ===
-
-            // A. Reset Visuals (Cinematics)
-            if (cinematographer != null)
-            {
-                cinematographer.StopCinematics();
-            }
-
-            // B. Reset Audio (FMOD loop)
+            if (cinematographer != null) cinematographer.StopCinematics();
             if (audioDirector != null)
             {
                 audioDirector.StopMusic();
-                // Restart music immediately to begin the tension loop again
                 audioDirector.StartMusic();
             }
-
-            // C. Reset Actors
             if (cameraDirector) cameraDirector.ResetCamera();
             if (playerController) playerController.ResetPlayer();
             if (enemyAI) enemyAI.ResetEnemy();
-
-            // D. Restart Cinematic Cuts (Optional, depending on if AudioDirector triggers it)
-            // If you rely purely on Audio markers, you don't need to call this manually here.
-            // If you want to force it:
-            // if (cinematographer != null) cinematographer.StartCinematicSequence();
         }
     }
 }

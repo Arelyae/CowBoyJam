@@ -14,12 +14,17 @@ public class ScoreManager : MonoBehaviour
     public TextMeshProUGUI reflexText;
     public Image reflexBackground;
 
+    [Header("--- Navigation Prompts ---")]
+    [Tooltip("The parent object holding your Prompt Images (e.g. 'Press [Space] to Continue').")]
+    public CanvasGroup navPromptsGroup;
+
     [Header("--- Config ---")]
     public float delayBeforeScoreAppears = 1.5f;
     public float labelTypingDuration = 0.5f;
     public float delayBeforeCounting = 0.2f;
     public float scoreCountingDuration = 1.0f;
     public float delayBetweenLines = 0.5f;
+    public float promptsFadeInDuration = 0.5f;
 
     [Header("--- Colors ---")]
     public Color speedTextColor = new Color(1f, 0.84f, 0f);
@@ -31,7 +36,7 @@ public class ScoreManager : MonoBehaviour
     [Header("--- Audio / Haptics ---")]
     public EventReference startTypingSound;
     public EventReference scoreCountingSound;
-    public EventReference skipSound; // <--- NOUVEAU : Son unique du Skip
+    public EventReference skipSound;
 
     [Range(1, 50)] public int audioTriggerStep = 3;
     [Range(0f, 1f)] public float lowFreqMotor = 0.5f;
@@ -44,36 +49,47 @@ public class ScoreManager : MonoBehaviour
     public string anticipationLabel = "Anticipation (Pre-Shot)";
 
     // Internal Data
+    public bool IsAnimating { get; private set; } = false;
+
+    // NEW: Public flag for GameProgressionManager
+    public bool AreInputsActive { get; private set; } = false;
+
+    private Sequence _currentSeq;
+    private string _finalDrawText;
+    private string _finalReflexText;
+
+    // Data passing
     [HideInInspector] public float aiActionTimestamp = -1f;
     [HideInInspector] public float playerDrawTimestamp = -1f;
     [HideInInspector] public float playerFireTimestamp = -1f;
 
-    // --- SKIP SYSTEM VARIABLES ---
-    public bool IsAnimating { get; private set; } = false;
-    private Sequence _currentSeq;
+    void Start()
+    {
+        if (scorePanel) scorePanel.SetActive(false);
+        ResetPromptsUI();
+    }
 
-    // On mémorise ce qu'on doit afficher à la fin pour le Skip instantané
-    private string _finalDrawText;
-    private string _finalReflexText;
-
-    void Start() { if (scorePanel) scorePanel.SetActive(false); }
     void OnDisable() { StopHaptics(); }
 
     public void ResetScore()
     {
         IsAnimating = false;
+        AreInputsActive = false; // Disable Inputs
+
         if (scorePanel) scorePanel.SetActive(false);
 
         ResetScoreUIOnly();
+        ResetPromptsUI();
 
         aiActionTimestamp = -1f;
         playerDrawTimestamp = -1f;
         playerFireTimestamp = -1f;
 
-        _currentSeq.Kill(); // On tue la séquence si elle existe
+        _currentSeq.Kill();
         this.transform.DOKill();
         if (drawSpeedText) drawSpeedText.DOKill();
         if (reflexText) reflexText.DOKill();
+        if (navPromptsGroup) navPromptsGroup.DOKill();
 
         StopHaptics();
     }
@@ -82,40 +98,32 @@ public class ScoreManager : MonoBehaviour
     {
         if (scorePanel) scorePanel.SetActive(false);
         ResetScoreUIOnly();
+        ResetPromptsUI();
 
         IsAnimating = true;
+        AreInputsActive = false;
 
-        // --- 1. PRÉ-CALCUL DES RÉSULTATS ---
+        // --- 1. CALCULATION LOGIC ---
         float executionTime = playerFireTimestamp - playerDrawTimestamp;
-
-        // Calcul du temps de réflexe
         float reflexTime = playerDrawTimestamp - aiActionTimestamp;
 
-        // Calcul Draw Text Final
         string hexSpeed = ColorToHex(speedTextColor);
         _finalDrawText = $"{drawSpeedLabel}<color=#{hexSpeed}>{executionTime:F3}s</color>";
 
-        // --- CORRECTION ICI : GESTION DU SCORE NÉGATIF ---
-        // Si l'IA n'a pas bougé (Timestamp <= 0) OU si le joueur a réagi AVANT l'IA (reflexTime < 0)
         if (aiActionTimestamp <= 0 || reflexTime < 0)
         {
-            // Cas Anticipation (Texte Gris)
             string hexAntic = ColorToHex(anticipationTextColor);
             _finalReflexText = $"<color=#{hexAntic}>{anticipationLabel}</color>";
         }
         else
         {
-            // Cas Normal (Temps Positif)
             Color c = (reflexTime < fastReflexThreshold) ? reflexFastColor : reflexNormalColor;
             string hexReflex = ColorToHex(c);
             _finalReflexText = $"{reflexLabel}<color=#{hexReflex}>{reflexTime:F3}s</color>";
         }
-        // -------------------------------------------------
 
-        // --- 2. CRÉATION SÉQUENCE ---
+        // --- 2. ANIMATION SEQUENCE ---
         _currentSeq = DOTween.Sequence().SetUpdate(true);
-
-        // Phase 0: Wait
         _currentSeq.AppendInterval(delayBeforeScoreAppears);
         _currentSeq.AppendCallback(() => { if (scorePanel) scorePanel.SetActive(true); });
 
@@ -130,24 +138,31 @@ public class ScoreManager : MonoBehaviour
         // Phase 2: Reflex
         if (reflexText != null)
         {
-            // --- CORRECTION ICI AUSSI (Même condition) ---
             if (aiActionTimestamp <= 0 || reflexTime < 0)
             {
-                // Animation Anticipation (Pas de compteur, juste le texte qui apparait)
                 _currentSeq.AppendCallback(() => PlaySound(startTypingSound));
                 if (reflexBackground) _currentSeq.Join(DOTween.To(() => 0f, x => reflexBackground.fillAmount = x, 1f, labelTypingDuration).SetEase(Ease.Linear).SetUpdate(true));
                 _currentSeq.Append(DOTween.To(() => "", x => reflexText.text = x, _finalReflexText, labelTypingDuration).SetOptions(true, ScrambleMode.None).SetUpdate(true));
             }
             else
             {
-                // Animation Normale (Compteur de chiffres)
                 Color c = (reflexTime < fastReflexThreshold) ? reflexFastColor : reflexNormalColor;
                 _currentSeq.Append(CreateScoreTween(reflexText, reflexBackground, reflexLabel, reflexTime, ColorToHex(c)));
             }
-            // ---------------------------------------------
         }
 
-        // FIN ANIMATION
+        // --- 3. SHOW PROMPTS ---
+        if (navPromptsGroup != null)
+        {
+            _currentSeq.AppendInterval(0.2f);
+            _currentSeq.Append(navPromptsGroup.DOFade(1f, promptsFadeInDuration).SetUpdate(true));
+            _currentSeq.AppendCallback(() =>
+            {
+                // We don't enable 'interactable' because they aren't buttons
+                AreInputsActive = true; // Signal GameProgressionManager to listen
+            });
+        }
+
         _currentSeq.OnComplete(() =>
         {
             IsAnimating = false;
@@ -155,35 +170,36 @@ public class ScoreManager : MonoBehaviour
         });
     }
 
-    // --- FONCTION SKIP ---
     public void SkipAnimation()
     {
         if (!IsAnimating) return;
 
-        // 1. Tuer l'animation en cours
         _currentSeq.Kill();
         StopHaptics();
 
-        // 2. Forcer l'affichage final (Instantané)
         if (scorePanel) scorePanel.SetActive(true);
 
+        // Instant Fill UI
         if (drawSpeedText) drawSpeedText.text = _finalDrawText;
         if (drawSpeedBackground) drawSpeedBackground.fillAmount = 1f;
 
         if (reflexText) reflexText.text = _finalReflexText;
         if (reflexBackground) reflexBackground.fillAmount = 1f;
 
-        // 3. Son de confirmation unique
-        PlaySound(skipSound.IsNull ? scoreCountingSound : skipSound); // Fallback si pas de son skip
+        // --- SHOW PROMPTS IMMEDIATELY ---
+        if (navPromptsGroup != null)
+        {
+            navPromptsGroup.alpha = 1f;
+            AreInputsActive = true;
+        }
 
-        // 4. Vibration unique "Toc"
+        PlaySound(skipSound.IsNull ? scoreCountingSound : skipSound);
         TriggerHaptic();
 
-        // 5. C'est fini
         IsAnimating = false;
     }
 
-    // --- UTILITAIRES ---
+    // --- UTILITIES ---
     private void ResetScoreUIOnly()
     {
         if (drawSpeedText) drawSpeedText.text = "";
@@ -192,17 +208,24 @@ public class ScoreManager : MonoBehaviour
         if (reflexBackground) reflexBackground.fillAmount = 0f;
     }
 
+    private void ResetPromptsUI()
+    {
+        AreInputsActive = false;
+        if (navPromptsGroup != null)
+        {
+            navPromptsGroup.alpha = 0f;
+        }
+    }
+
     private Sequence CreateScoreTween(TextMeshProUGUI targetText, Image bgImage, string label, float targetValue, string hexColor)
     {
         Sequence s = DOTween.Sequence().SetUpdate(true);
-        // Label Typing
         s.AppendCallback(() => PlaySound(startTypingSound));
         s.Append(DOTween.To(() => "", x => targetText.text = x, label, labelTypingDuration).SetEase(Ease.Linear).SetUpdate(true));
         if (bgImage != null) s.Join(DOTween.To(() => 0f, x => bgImage.fillAmount = x, 1f, labelTypingDuration).SetEase(Ease.OutQuad).SetUpdate(true));
 
         if (delayBeforeCounting > 0) s.AppendInterval(delayBeforeCounting);
 
-        // Counting
         int lastSoundMilli = 0;
         s.Append(DOTween.To(() => 0f, x =>
         {
