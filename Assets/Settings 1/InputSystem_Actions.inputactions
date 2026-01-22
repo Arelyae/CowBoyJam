@@ -34,18 +34,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Feint",
+                    "name": "NorthButton",
                     "type": "Button",
-                    "id": "8776406d-c0a6-4737-b99c-76555d1ee770",
+                    "id": "54e8dc52-6997-4a28-9f3a-416d2c77357e",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
                 },
                 {
-                    "name": "NorthButton",
+                    "name": "WestButton",
                     "type": "Button",
-                    "id": "54e8dc52-6997-4a28-9f3a-416d2c77357e",
+                    "id": "bd574974-bddb-469a-a962-1edc12b6f573",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -66,11 +66,33 @@
                 },
                 {
                     "name": "",
+                    "id": "f8118f26-113b-41a8-8fee-a86bf5ffff0e",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Aim",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "49f5b6d9-6e2c-49cc-9cd2-8d1bea0db0e1",
                     "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Gamepad",
+                    "action": "Load",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "03bd381e-078b-45e2-ab6a-f8132fed61a4",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
                     "action": "Load",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -88,12 +110,12 @@
                 },
                 {
                     "name": "",
-                    "id": "6d842cf7-e701-4dc8-8ad8-6c81ae1104a5",
-                    "path": "<Gamepad>/buttonWest",
+                    "id": "c6b2d850-8fc5-4cbc-a371-8dc54ed03ba6",
+                    "path": "<Keyboard>/space",
                     "interactions": "",
                     "processors": "",
-                    "groups": ";Gamepad",
-                    "action": "Feint",
+                    "groups": "",
+                    "action": "Fire",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -105,6 +127,39 @@
                     "processors": "",
                     "groups": "",
                     "action": "NorthButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4bb13ecb-9ea3-4e90-aed1-fc0c08c4de16",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "NorthButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "601858b8-6ead-43b2-ab58-205b19a17e76",
+                    "path": "<Gamepad>/buttonWest",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "WestButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0442491b-41e8-4fb4-924e-c34a964670c4",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "WestButton",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

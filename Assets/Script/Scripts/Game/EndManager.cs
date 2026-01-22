@@ -6,20 +6,23 @@ using System.Collections;
 public class EndManager : MonoBehaviour
 {
     [Header("--- Input ---")]
-    public InputActionReference reloadAction; // Kept your Input System reference
+    public InputActionReference reloadAction;
 
     [Header("--- UI Managers ---")]
     public ScoreManager scoreManager;
     public FailManager failManager;
 
-    [Header("--- Audio & Cinematics ---")]
+    [Header("--- MODE: TUTORIAL (Assign ONLY in Tutorial Scene) ---")]
+    public TutorialManager tutorialManager; // <--- NEW: Forces a different reset path
+
+    [Header("--- MODE: DUEL (Standard) ---")]
     public DuelCinematographer cinematographer;
     public DuelAudioDirector audioDirector;
-
-    [Header("--- Gameplay References (Soft Reset) ---")]
-    public DuelController playerController;
     public EnemyDuelAI enemyAI;
     public CameraDirector cameraDirector;
+
+    [Header("--- Shared References ---")]
+    public DuelController playerController;
 
     [Header("--- Victory Settings (Slow Motion) ---")]
     public float delayBeforeSlowMo = 0.1f;
@@ -29,7 +32,7 @@ public class EndManager : MonoBehaviour
 
     [Header("--- Defeat Settings ---")]
     [Tooltip("Wait time in seconds before freezing (Allows hearing the 'Click' or seeing the death)")]
-    public float defeatDelay = 0.8f; // RESTORED: Vital for game feel
+    public float defeatDelay = 0.8f;
 
     [Header("--- FAIL SCREEN STRINGS ---")]
     [Header("1. Death")]
@@ -71,7 +74,7 @@ public class EndManager : MonoBehaviour
     {
         if (!gameIsOver) return;
 
-        // --- INPUT DETECTION (Merged Logic) ---
+        // --- INPUT DETECTION ---
         bool pressedRestart = false;
 
         // 1. Check your Input System Action
@@ -84,7 +87,7 @@ public class EndManager : MonoBehaviour
         {
             pressedRestart = true;
         }
-        // 3. Hard check for Gamepad North (Triangle/Y) as requested
+        // 3. Hard check for Gamepad North (Triangle/Y)
         if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame)
         {
             pressedRestart = true;
@@ -96,7 +99,7 @@ public class EndManager : MonoBehaviour
         }
     }
 
-    // --- NEW: INPUT HANDLING PRIORITY ---
+    // --- INPUT HANDLING PRIORITY ---
     private void HandleResetInput()
     {
         // PRIORITY 1: Fail Screen Animation Skip
@@ -123,7 +126,7 @@ public class EndManager : MonoBehaviour
         RestartGame();
     }
 
-    // --- VICTORY LOGIC (Restored your SlowMo Coroutine) ---
+    // --- VICTORY LOGIC ---
     public void TriggerVictory(string message)
     {
         if (gameIsOver) return;
@@ -137,9 +140,7 @@ public class EndManager : MonoBehaviour
         // Show Score
         if (scoreManager) scoreManager.DisplayScore();
 
-        // Kill Cam
-
-        // Start your original juicy slow motion
+        // Start slow motion
         StartCoroutine(SlowMotionSequence());
     }
 
@@ -155,14 +156,13 @@ public class EndManager : MonoBehaviour
         Time.fixedDeltaTime = 0.02f * targetTimeScale;
     }
 
-    // --- DEFEAT LOGIC (Restored your Delay + Added New Fail Strings) ---
+    // --- DEFEAT LOGIC ---
     public void TriggerDefeat(string rawReason)
     {
         if (gameIsOver) return;
         gameIsOver = true;
 
         // --- 1. SILENCE THE ENEMY ---
-        // Immediately stop the AI from shooting if the player fumbled/died
         if (enemyAI != null)
         {
             enemyAI.StopCombat();
@@ -171,7 +171,6 @@ public class EndManager : MonoBehaviour
         Debug.Log($"DEFEAT ({rawReason}) - Waiting {defeatDelay}s before freeze...");
 
         // --- 2. SLOW MOTION SEQUENCE ---
-        // Wait for the delay (e.g. for the gunshot sound or death anim), then slow down time
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f)
             .SetDelay(defeatDelay)
             .SetUpdate(true)
@@ -204,7 +203,7 @@ public class EndManager : MonoBehaviour
                 // DEATH (Default)
                 finalTitle = deathTitle;
                 finalReason = deathReason;
-                showRedOverlay = true; // Only show blood overlay on actual death
+                showRedOverlay = true;
             }
 
             failManager.TriggerFailSequence(finalTitle, finalReason, showRedOverlay);
@@ -222,30 +221,44 @@ public class EndManager : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
 
-        // 2. Reset Individual Components
+        // 2. Reset UI
         if (failManager) failManager.Hide();
         if (scoreManager) scoreManager.ResetScore();
 
-        // 3. RESET CINEMATICS (Visuals)
-        // Force the cinematic cameras to turn off so Gameplay Cam (Priority 10) takes over immediately
-        if (cinematographer != null)
+        // 3. CHECK: TUTORIAL OR DUEL?
+        if (tutorialManager != null)
         {
-            cinematographer.StopCinematics();
+            // === PATH A: TUTORIAL MODE ===
+            // Just force the target upright and holster the gun instantly.
+            tutorialManager.ForceReset();
         }
-
-        // 4. RESET AUDIO
-        // Stops the music and clears the FMOD marker flags, then Restarts
-        if (audioDirector != null)
+        else
         {
-            audioDirector.StopMusic();
+            // === PATH B: DUEL MODE (Complex) ===
 
-            // This restarts the loop: Music starts -> Hits first marker -> Camera cut happens
-            audioDirector.StartMusic();
+            // A. Reset Visuals (Cinematics)
+            if (cinematographer != null)
+            {
+                cinematographer.StopCinematics();
+            }
+
+            // B. Reset Audio (FMOD loop)
+            if (audioDirector != null)
+            {
+                audioDirector.StopMusic();
+                // Restart music immediately to begin the tension loop again
+                audioDirector.StartMusic();
+            }
+
+            // C. Reset Actors
+            if (cameraDirector) cameraDirector.ResetCamera();
+            if (playerController) playerController.ResetPlayer();
+            if (enemyAI) enemyAI.ResetEnemy();
+
+            // D. Restart Cinematic Cuts (Optional, depending on if AudioDirector triggers it)
+            // If you rely purely on Audio markers, you don't need to call this manually here.
+            // If you want to force it:
+            // if (cinematographer != null) cinematographer.StartCinematicSequence();
         }
-
-        // 5. Reset Gameplay Actors
-        if (cameraDirector) cameraDirector.ResetCamera();
-        if (playerController) playerController.ResetPlayer();
-        if (enemyAI) enemyAI.ResetEnemy();
     }
 }

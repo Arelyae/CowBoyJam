@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy1
   m_EditorClassIdentifier: 
   enemyName: John Doe
-  minWaitTime: 26.55
-  maxWaitTime: 26.55
+  minWaitTime: 3
+  maxWaitTime: 5
   fastestDrawSpeed: 1
   slowestDrawSpeed: 2
   skinMaterial: {fileID: 0}

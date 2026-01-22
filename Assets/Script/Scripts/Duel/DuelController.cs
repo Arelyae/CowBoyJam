@@ -21,6 +21,9 @@ public class DuelController : MonoBehaviour
     public GameObject bulletPrefab;
     public float flashDuration = 0.05f;
 
+    [Header("--- Training Mode ---")]
+    public TutorialTarget practiceTarget; // Reference to the practice dummy
+
     [Header("--- Input System ---")]
     public InputActionReference aimAction, loadAction, fireAction, feintAction;
 
@@ -133,12 +136,6 @@ public class DuelController : MonoBehaviour
             }
             ProcessInputData();
         }
-
-        // --- 4. FEINT ---
-        if (feintAction.action.WasPressedThisFrame() && currentState == DuelState.Idle)
-        {
-            StartCoroutine(PerformFeint());
-        }
     }
 
     // --- PHASE 1: LOGIC & DECISION ---
@@ -191,7 +188,8 @@ public class DuelController : MonoBehaviour
             }
 
             // Bullet Spawning
-            if (bulletPrefab != null && targetEnemy != null)
+            // UPDATED: Allow firing if EITHER an Enemy OR a Practice Target exists
+            if (bulletPrefab != null)
             {
                 // We store the bullet reference to destroy it if we die while it travels
                 lastFiredBullet = Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
@@ -199,7 +197,17 @@ public class DuelController : MonoBehaviour
                 DuelBullet bulletScript = lastFiredBullet.GetComponent<DuelBullet>();
                 if (bulletScript != null)
                 {
-                    bulletScript.Initialize(targetEnemy.ragdollHeadRigidbody, targetEnemy, true);
+                    if (targetEnemy != null)
+                    {
+                        // AI DUEL MODE
+                        bulletScript.Initialize(targetEnemy.ragdollHeadRigidbody, targetEnemy, true);
+                    }
+                    else if (practiceTarget != null)
+                    {
+                        // TUTORIAL MODE
+                        // Use the new InitializeTraining function you added to DuelBullet
+                        bulletScript.InitializeTraining(practiceTarget.hitBox, practiceTarget);
+                    }
                 }
             }
         }
