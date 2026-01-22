@@ -19,6 +19,11 @@ public class DuelEnemyProfile : ScriptableObject
     [Tooltip("Le temps le plus lent possible (ex: 1.0s = Facile)")]
     public float slowestDrawSpeed = 0.8f;
 
+    [Header("Audio Atmosphere")]
+    [Range(0f, 100f)] // UPDATED RANGE
+    [Tooltip("How much the music 'Intensity' parameter increases when you beat this enemy (0-100).")]
+    public float musicIntensityStep = 10f; // Default changed to 10 for the new scale
+
     [Header("Bonus (Optionnel)")]
     [Tooltip("Matériau spécifique pour cet ennemi (si vous voulez changer sa tenue)")]
     public Material skinMaterial;

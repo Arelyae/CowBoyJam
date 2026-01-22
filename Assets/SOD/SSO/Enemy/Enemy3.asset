@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7da906bc3a65cb24396da61fc4f6272a, type: 3}
   m_Name: Enemy3
   m_EditorClassIdentifier: 
-  enemyName: Jame Smithee
+  enemyName: Joe McSparrow
   minWaitTime: 2
   maxWaitTime: 5
   fastestDrawSpeed: 0.7
   slowestDrawSpeed: 0.8
+  musicIntensityStep: 20
   skinMaterial: {fileID: 0}

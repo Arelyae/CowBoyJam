@@ -9,11 +9,6 @@ public class FailManager : MonoBehaviour
     [Header("--- UI References ---")]
     public GameObject failPanel;
 
-    // NEW: The "Press R to Restart" container
-    [Header("--- 4. Restart Prompt (Appears at End) ---")]
-    public CanvasGroup restartPromptGroup;
-    public float promptFadeInDuration = 0.5f;
-
     [Header("--- 1. Screen Overlay (Red Flash) ---")]
     public Image screenOverlay;
     [Range(0f, 1f)] public float overlayMaxAlpha = 0.6f;
@@ -27,6 +22,10 @@ public class FailManager : MonoBehaviour
     public Image decorationImage;
     public TextMeshProUGUI reasonText;
 
+    [Header("--- 4. Restart Prompt (Appears at End) ---")]
+    public CanvasGroup restartPromptGroup;
+    public float promptFadeInDuration = 0.5f;
+
     [Header("--- Animation Timings ---")]
     public float delayBeforeSequence = 0.5f;
     public float fillDuration = 0.5f;
@@ -37,7 +36,7 @@ public class FailManager : MonoBehaviour
 
     [Header("--- Input Safety ---")]
     [Tooltip("How many seconds to ignore Input after the Fail Screen appears. Prevents accidental skips.")]
-    public float skipInputDelay = 0.8f; // <--- NEW SETTING
+    public float skipInputDelay = 0.8f;
 
     [Header("--- Audio ---")]
     public EventReference phase1Sound;
@@ -50,7 +49,6 @@ public class FailManager : MonoBehaviour
     public bool IsActive { get; private set; } = false;
 
     private Sequence _currentSeq;
-    private Tween _promptLoopTween;
     private string _finalTitle;
     private string _finalReason;
     private bool _shouldShowOverlay;
@@ -60,6 +58,7 @@ public class FailManager : MonoBehaviour
 
     void Start()
     {
+        // Ensure images are set to Filled type for radial animations
         if (backgroundFill && backgroundFill.type != Image.Type.Filled) backgroundFill.type = Image.Type.Filled;
         if (decorationImage && decorationImage.type != Image.Type.Filled) decorationImage.type = Image.Type.Filled;
         Hide();
@@ -77,8 +76,7 @@ public class FailManager : MonoBehaviour
         IsAnimating = true;
         IsActive = true;
 
-        // --- NEW: Record the time we started ---
-        // We use UnscaledTime because the game is usually in Slow Motion here
+        // Record start time (using UnscaledTime as TimeScale is often 0 or slow here)
         _sequenceStartTime = Time.unscaledTime;
 
         _currentSeq = DOTween.Sequence().SetUpdate(true);
@@ -128,25 +126,19 @@ public class FailManager : MonoBehaviour
         });
     }
 
-    // --- SEPARATE FUNCTION FOR THE PROMPT ---
     private void ShowRestartPrompt()
     {
         if (restartPromptGroup == null) return;
 
+        // Only fade in. No scaling/bouncing.
         restartPromptGroup.DOFade(1f, promptFadeInDuration).SetUpdate(true);
-
-        _promptLoopTween = restartPromptGroup.transform.DOScale(1.05f, 0.8f)
-            .SetLoops(-1, LoopType.Yoyo)
-            .SetEase(Ease.InOutSine)
-            .SetUpdate(true);
     }
 
     public void SkipAnimation()
     {
         if (!IsAnimating) return;
 
-        // --- NEW: SAFETY CHECK ---
-        // If not enough time has passed since the sequence started, IGNORE the skip.
+        // --- SAFETY CHECK ---
         if (Time.unscaledTime < _sequenceStartTime + skipInputDelay)
         {
             return;
@@ -154,6 +146,7 @@ public class FailManager : MonoBehaviour
 
         _currentSeq.Kill();
 
+        // Snap visuals to end state
         if (screenOverlay)
         {
             Color c = screenOverlay.color;
@@ -166,7 +159,7 @@ public class FailManager : MonoBehaviour
         if (titleText) titleText.text = _finalTitle;
         if (reasonText) reasonText.text = _finalReason;
 
-        // Force Show Prompt Immediately
+        // Show Prompt Immediately
         ShowRestartPrompt();
 
         PlaySound(skipSound);
@@ -176,7 +169,6 @@ public class FailManager : MonoBehaviour
     public void Hide()
     {
         _currentSeq.Kill();
-        if (_promptLoopTween != null) _promptLoopTween.Kill();
 
         IsAnimating = false;
         IsActive = false;
@@ -200,11 +192,11 @@ public class FailManager : MonoBehaviour
         if (titleText) titleText.text = "";
         if (reasonText) reasonText.text = "";
 
-        // Reset Prompt
         if (restartPromptGroup)
         {
             restartPromptGroup.alpha = 0f;
-            restartPromptGroup.transform.localScale = Vector3.one;
+            // Removed: restartPromptGroup.transform.localScale = Vector3.one;
+            // Now relies on whatever scale you set in the Inspector.
         }
     }
 

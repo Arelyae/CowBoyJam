@@ -1,102 +1,94 @@
 using UnityEngine;
 using FMODUnity;
 using FMOD.Studio;
-using System;
-using System.Runtime.InteropServices;
 
 public class DuelAudioDirector : MonoBehaviour
 {
-    [Header("--- Links ---")]
-    public DuelCinematographer cinematographer;
-
     [Header("--- FMOD Settings ---")]
     public EventReference duelMusic;
+    [Tooltip("Name of the local parameter in FMOD Studio")]
+    public string intensityParamName = "Intensity";
 
-    // Internal FMOD state
+    [Header("--- Transition Settings ---")]
+    [Tooltip("How fast the intensity moves towards the target (Units per Second). Example: 20 means it takes 5 seconds to go from 0 to 100.")]
+    public float smoothingSpeed = 20f;
+
+    // Internal FMOD instance
     private EventInstance musicInstance;
-    private GCHandle timelineHandle;
 
-    // FLAGS
-    private static bool _cutTriggered = false;
-    private static string _lastMarkerName = "";
+    // Logic for smoothing
+    private float currentIntensity = 0f;
+    private float targetIntensity = 0f;
 
     void Start()
     {
-        StartMusic(); 
-    }
-
-    public void StartMusic()
-    {
-        // 1. Safety Cleanup first
-        StopMusic();
-
-        if (duelMusic.IsNull) return;
-
-        // 2. Create Instance
-        musicInstance = RuntimeManager.CreateInstance(duelMusic);
-
-        timelineHandle = GCHandle.Alloc(this);
-        musicInstance.setUserData(GCHandle.ToIntPtr(timelineHandle));
-
-        musicInstance.setCallback(OnFMODCallback, EVENT_CALLBACK_TYPE.TIMELINE_MARKER);
-
-        // 3. Reset Flags (Crucial for Restart)
-        _cutTriggered = false;
-        _lastMarkerName = "";
-
-        musicInstance.start();
-        musicInstance.release();
-    }
-
-    public void StopMusic()
-    {
-        // 1. Stop FMOD
-        if (musicInstance.isValid())
+        if (!IsPlaying())
         {
-            musicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-            musicInstance.setCallback(null);
+            StartMusic();
         }
-
-        // 2. Free Memory
-        if (timelineHandle.IsAllocated) timelineHandle.Free();
-
-        // 3. RESET FLAGS
-        // This ensures pending marker events don't fire after we stop
-        _cutTriggered = false;
     }
 
     void Update()
     {
-        if (_cutTriggered)
+        // Only update if we have a valid instance and we aren't at the target yet
+        // We use a small epsilon (0.01f) to stop processing when close enough
+        if (musicInstance.isValid() && Mathf.Abs(currentIntensity - targetIntensity) > 0.01f)
         {
-            _cutTriggered = false;
+            // Move current towards target smoothly
+            currentIntensity = Mathf.MoveTowards(currentIntensity, targetIntensity, smoothingSpeed * Time.deltaTime);
 
-            // Log for debug
-            // Debug.Log($"AUDIO: Marker detected. Triggering Cut.");
-
-            if (cinematographer != null)
-            {
-                cinematographer.TriggerNextShot();
-            }
+            // Apply to FMOD
+            musicInstance.setParameterByName(intensityParamName, currentIntensity);
         }
     }
 
-    [AOT.MonoPInvokeCallback(typeof(EVENT_CALLBACK))]
-    static FMOD.RESULT OnFMODCallback(EVENT_CALLBACK_TYPE type, IntPtr instancePtr, IntPtr parameterPtr)
+    public void StartMusic()
     {
-        if (type == EVENT_CALLBACK_TYPE.TIMELINE_MARKER)
-        {
-            var parameter = (TIMELINE_MARKER_PROPERTIES)Marshal.PtrToStructure(parameterPtr, typeof(TIMELINE_MARKER_PROPERTIES));
-            string detectedName = (string)parameter.name;
+        if (duelMusic.IsNull) return;
 
-            // Simple Filter: Check if marker name contains "Shot", "Cut", or "Next"
-            if (detectedName.Contains("Shot") || detectedName.Contains("Cut") || detectedName.Contains("Next"))
-            {
-                _lastMarkerName = detectedName;
-                _cutTriggered = true;
-            }
+        musicInstance = RuntimeManager.CreateInstance(duelMusic);
+        musicInstance.start();
+        musicInstance.release();
+
+        // Apply initial state instantly
+        musicInstance.setParameterByName(intensityParamName, currentIntensity);
+    }
+
+    public void IncreaseIntensity(float amount)
+    {
+        // Add to TARGET
+        targetIntensity = Mathf.Clamp(targetIntensity + amount, 0f, 100f);
+        Debug.Log($"[AUDIO] Target Intensity INCREASED to: {targetIntensity}");
+    }
+
+    public void DecreaseIntensity(float amount)
+    {
+        // Subtract from TARGET
+        targetIntensity = Mathf.Clamp(targetIntensity - amount, 0f, 100f);
+        Debug.Log($"[AUDIO] Target Intensity DECREASED to: {targetIntensity}");
+    }
+
+    public void ResetIntensity()
+    {
+        // Just set the target. The Update loop handles the smooth fade down.
+        targetIntensity = 0f;
+        Debug.Log($"[AUDIO] Target Intensity Set to 0 (Smoothing down...)");
+    }
+
+    public void StopMusic()
+    {
+        if (musicInstance.isValid())
+        {
+            musicInstance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
         }
-        return FMOD.RESULT.OK;
+    }
+
+    private bool IsPlaying()
+    {
+        if (!musicInstance.isValid()) return false;
+        PLAYBACK_STATE state;
+        musicInstance.getPlaybackState(out state);
+        return state != PLAYBACK_STATE.STOPPED;
     }
 
     void OnDestroy()

@@ -12,6 +12,9 @@ public class EndManager : MonoBehaviour
     public ScoreManager scoreManager;
     public FailManager failManager;
 
+    [Header("--- NEW: Gameplay HUD ---")]
+    public CanvasGroup gameplayHUDGroup;
+
     [Header("--- MODE: TUTORIAL ---")]
     public TutorialManager tutorialManager;
 
@@ -44,6 +47,9 @@ public class EndManager : MonoBehaviour
     // Internal State
     private bool gameIsOver = false;
 
+    // --- NEW FLAG ---
+    public bool PlayerWonThisRound { get; private set; } = false;
+
     private void OnEnable() { if (reloadAction != null) reloadAction.action.Enable(); }
     private void OnDisable() { if (reloadAction != null) reloadAction.action.Disable(); }
 
@@ -53,77 +59,63 @@ public class EndManager : MonoBehaviour
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
         DOTween.KillAll();
+
+        if (gameplayHUDGroup) gameplayHUDGroup.alpha = 1f;
     }
 
     void Update()
     {
         if (!gameIsOver) return;
 
-        // Check for ANY generic "confirm/reset" input
+        // FIXED LOGIC (Respects Progression Transitions)
+        if (scoreManager != null && scoreManager.AreInputsActive) return;
+        if (GameProgressionManager.Instance != null && GameProgressionManager.Instance.IsTransitioning) return;
+
         bool pressedRestart = false;
         if (reloadAction != null && reloadAction.action.WasPressedThisFrame()) pressedRestart = true;
         if (Input.GetKeyDown(KeyCode.R)) pressedRestart = true;
         if (Gamepad.current != null && (Gamepad.current.buttonNorth.wasPressedThisFrame || Gamepad.current.buttonSouth.wasPressedThisFrame)) pressedRestart = true;
 
-        if (pressedRestart)
-        {
-            HandleResetInput();
-        }
+        if (pressedRestart) HandleResetInput();
     }
 
     private void HandleResetInput()
     {
-        // 1. Skip Fail Animation
-        if (failManager != null && failManager.IsAnimating)
-        {
-            failManager.SkipAnimation();
-            return;
-        }
-
-        // 2. Skip Score Animation
-        if (scoreManager != null && scoreManager.IsAnimating)
-        {
-            scoreManager.SkipAnimation();
-            return;
-        }
-
-        // 3. BLOCKER: Game Progression Logic
-        // If the Score Screen is showing inputs, we DO NOT reset here.
-        // We let GameProgressionManager handle the specific inputs.
-        if (scoreManager != null && scoreManager.AreInputsActive)
-        {
-            return;
-        }
-
-        // 4. Standard Restart (Used for Fail Screen or Fallback)
+        if (failManager != null && failManager.IsAnimating) { failManager.SkipAnimation(); return; }
+        if (scoreManager != null && scoreManager.IsAnimating) { scoreManager.SkipAnimation(); return; }
         RestartGame(resetTotalScore: false);
     }
 
+    // --- VICTORY LOGIC ---
     public void TriggerVictory(string message)
     {
         if (gameIsOver) return;
         gameIsOver = true;
+        PlayerWonThisRound = true; // Mark as Won
 
+        if (gameplayHUDGroup) gameplayHUDGroup.DOFade(0f, 0.3f).SetUpdate(true);
         if (cameraDirector != null) cameraDirector.TriggerKillCam();
         if (failManager) failManager.Hide();
         if (scoreManager) scoreManager.DisplayScore();
 
+        // --- AUDIO: Increase Intensity ---
+        if (audioDirector != null && enemyAI != null && enemyAI.difficultyProfile != null)
+        {
+            float step = enemyAI.difficultyProfile.musicIntensityStep;
+            audioDirector.IncreaseIntensity(step);
+        }
+
         StartCoroutine(SlowMotionSequence());
     }
 
-    IEnumerator SlowMotionSequence()
-    {
-        if (delayBeforeSlowMo > 0) yield return new WaitForSeconds(delayBeforeSlowMo);
-        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, targetTimeScale, slowMoDuration)
-            .SetUpdate(true).SetEase(slowMoEase);
-        Time.fixedDeltaTime = 0.02f * targetTimeScale;
-    }
-
+    // --- DEFEAT LOGIC ---
     public void TriggerDefeat(string rawReason)
     {
         if (gameIsOver) return;
         gameIsOver = true;
+        PlayerWonThisRound = false; // Mark as Lost
 
+        if (gameplayHUDGroup) gameplayHUDGroup.DOFade(0f, 0.3f).SetUpdate(true);
         if (enemyAI != null) enemyAI.StopCombat();
         if (scoreManager) scoreManager.ResetScore();
 
@@ -144,6 +136,15 @@ public class EndManager : MonoBehaviour
         }
     }
 
+    IEnumerator SlowMotionSequence()
+    {
+        if (delayBeforeSlowMo > 0) yield return new WaitForSeconds(delayBeforeSlowMo);
+        DOTween.To(() => Time.timeScale, x => Time.timeScale = x, targetTimeScale, slowMoDuration)
+            .SetUpdate(true).SetEase(slowMoEase);
+        Time.fixedDeltaTime = 0.02f * targetTimeScale;
+    }
+
+    // --- RESET LOGIC ---
     public void RestartGame(bool resetTotalScore = true)
     {
         Debug.Log($"--- RESETTING GAME (Wipe Score: {resetTotalScore}) ---");
@@ -152,13 +153,12 @@ public class EndManager : MonoBehaviour
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
         gameIsOver = false;
+        PlayerWonThisRound = false; // Reset flag
+
+        if (gameplayHUDGroup) gameplayHUDGroup.alpha = 1f;
 
         if (failManager) failManager.Hide();
-
-        if (scoreManager)
-        {
-            scoreManager.ResetScore();
-        }
+        if (scoreManager) scoreManager.ResetScore();
 
         if (tutorialManager != null)
         {
@@ -167,7 +167,7 @@ public class EndManager : MonoBehaviour
         else
         {
             if (cinematographer != null) cinematographer.StopCinematics();
-            if (audioDirector != null) { audioDirector.StopMusic(); audioDirector.StartMusic(); }
+            // Note: Audio Director is handled via GameProgressionManager now (or persisted)
             if (cameraDirector) cameraDirector.ResetCamera();
             if (playerController) playerController.ResetPlayer();
             if (enemyAI) enemyAI.ResetEnemy();

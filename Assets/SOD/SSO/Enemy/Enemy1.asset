@@ -17,4 +17,5 @@ MonoBehaviour:
   maxWaitTime: 5
   fastestDrawSpeed: 1
   slowestDrawSpeed: 2
+  musicIntensityStep: 20
   skinMaterial: {fileID: 0}
