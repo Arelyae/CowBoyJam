@@ -1,22 +1,31 @@
 using UnityEngine;
-using DG.Tweening; // For smooth fade in/out
+using DG.Tweening;
 
 public class TutorialUIManager : MonoBehaviour
 {
     [Header("--- References ---")]
     public DuelController player;
 
-    [Header("--- UI Prompts (Assign GameObjects) ---")]
-    public CanvasGroup aimPrompt;  // The "Draw" input UI
-    public CanvasGroup loadPrompt; // The "Cock Hammer" input UI
-    public CanvasGroup firePrompt; // The "Fire" input UI
+    [Header("--- Main Container ---")]
+    [Tooltip("The parent object holding all tutorial prompts. Used to hide everything during Title Screen.")]
+    public CanvasGroup mainCanvasGroup; // <--- NEW REFERENCE
+
+    [Header("--- Individual Prompts ---")]
+    public CanvasGroup aimPrompt;
+    public CanvasGroup loadPrompt;
+    public CanvasGroup firePrompt;
 
     [Header("--- Settings ---")]
     public float fadeSpeed = 0.2f;
 
     void Start()
     {
-        // Initial Reset
+        // Initialize hidden if the player is disabled (Title Screen mode)
+        if (player != null && !player.enabled)
+        {
+            if (mainCanvasGroup != null) mainCanvasGroup.alpha = 0f;
+        }
+
         UpdateUIState();
     }
 
@@ -24,7 +33,19 @@ public class TutorialUIManager : MonoBehaviour
     {
         if (player == null) return;
 
-        // We check the player's state every frame to sync the UI
+        // 1. CHECK: IS THE GAME ACTIVE?
+        // If the player script is disabled (Title Screen), hide everything.
+        if (!player.enabled)
+        {
+            SetVisible(mainCanvasGroup, false);
+            return;
+        }
+
+        // 2. SHOW MAIN CONTAINER
+        // If player is enabled, make sure the HUD is visible
+        SetVisible(mainCanvasGroup, true);
+
+        // 3. UPDATE INDIVIDUAL PROMPTS
         UpdateUIState();
     }
 
@@ -32,32 +53,28 @@ public class TutorialUIManager : MonoBehaviour
     {
         DuelState state = player.currentState;
 
-        // 1. STATE: IDLE (Start)
-        // Show AIM. Hide others.
+        // IDLE -> Show AIM
         if (state == DuelState.Idle)
         {
             SetVisible(aimPrompt, true);
             SetVisible(loadPrompt, false);
             SetVisible(firePrompt, false);
         }
-        // 2. STATE: DRAWING (Player is aiming)
-        // Keep AIM visible. Show LOAD.
+        // DRAWING -> Show AIM + LOAD
         else if (state == DuelState.Drawing)
         {
             SetVisible(aimPrompt, true);
             SetVisible(loadPrompt, true);
             SetVisible(firePrompt, false);
         }
-        // 3. STATE: COCKED (Hammer is back)
-        // Keep AIM & LOAD visible. Show FIRE.
+        // COCKED -> Show AIM + LOAD + FIRE
         else if (state == DuelState.Cocked)
         {
             SetVisible(aimPrompt, true);
             SetVisible(loadPrompt, true);
             SetVisible(firePrompt, true);
         }
-        // 4. STATE: FIRED / DEAD / FEINTING
-        // Hide EVERYTHING.
+        // FIRED/DEAD -> Hide ALL
         else
         {
             SetVisible(aimPrompt, false);
@@ -66,17 +83,15 @@ public class TutorialUIManager : MonoBehaviour
         }
     }
 
-    // Helper to fade UI in/out nicely
     void SetVisible(CanvasGroup group, bool visible)
     {
         if (group == null) return;
 
         float targetAlpha = visible ? 1f : 0f;
 
-        // Only tween if we aren't already there (optimization)
         if (Mathf.Abs(group.alpha - targetAlpha) > 0.01f)
         {
-            // Use DOTween if available, otherwise snap
+            // Simple approach: move towards target
             group.alpha = Mathf.MoveTowards(group.alpha, targetAlpha, Time.deltaTime / fadeSpeed);
         }
     }
