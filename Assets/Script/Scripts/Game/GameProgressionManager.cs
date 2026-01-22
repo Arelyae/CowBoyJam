@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 using System.Collections.Generic;
 
 public class GameProgressionManager : MonoBehaviour
@@ -19,8 +20,12 @@ public class GameProgressionManager : MonoBehaviour
     public InputActionReference retryInput;
     public InputActionReference restartInput;
 
-    // Internal State
+    [Header("--- Transition Settings ---")]
+    [Tooltip("Time to wait after selecting an option before the game actually resets.")]
+    public float selectionDelay = 0.6f;
+
     private int _currentIndex = 0;
+    private bool _isTransitioning = false;
 
     private void Awake()
     {
@@ -30,8 +35,8 @@ public class GameProgressionManager : MonoBehaviour
 
     private void Start()
     {
-        // Start at index 0
-        _currentIndex = 0;
+        // Debug Log for Initial Load
+        Debug.Log("<color=green>[PROGRESSION] Game Started. Loading first enemy...</color>");
         LoadEnemyAtIndex(0);
 
         if (continueInput != null) continueInput.action.Enable();
@@ -39,76 +44,91 @@ public class GameProgressionManager : MonoBehaviour
         if (restartInput != null) restartInput.action.Enable();
     }
 
+    private void OnDestroy()
+    {
+        if (continueInput != null) continueInput.action.Disable();
+        if (retryInput != null) retryInput.action.Disable();
+        if (restartInput != null) restartInput.action.Disable();
+    }
+
     private void Update()
     {
-        // 1. SAFETY CHECK
-        // If Score Manager is NOT active/showing prompts, do nothing.
-        // This prevents us from overriding the Fail Screen logic.
-        if (scoreManager == null || !scoreManager.AreInputsActive) return;
+        if (scoreManager == null || !scoreManager.AreInputsActive || _isTransitioning) return;
 
-        // 2. DETECT INPUTS
         if (CheckInput(continueInput))
         {
-            OnContinuePressed();
+            StartCoroutine(SequenceContinue());
         }
         else if (CheckInput(retryInput))
         {
-            OnRetryPressed();
+            StartCoroutine(SequenceRetry());
         }
         else if (CheckInput(restartInput))
         {
-            OnFullRestartPressed();
+            StartCoroutine(SequenceRestart());
         }
     }
 
     private bool CheckInput(InputActionReference refAction)
     {
-        if (refAction != null && refAction.action.WasPressedThisFrame()) return true;
-        return false;
+        return (refAction != null && refAction.action.WasPressedThisFrame());
     }
 
-    // --- ACTIONS ---
+    // --- COROUTINE SEQUENCES ---
 
-    // 1. RETRY (Same Enemy)
-    public void OnRetryPressed()
+    // 1. RETRY
+    IEnumerator SequenceRetry()
     {
-        Debug.Log($"PROGRESSION: Retry Enemy Index {_currentIndex}");
-        // We do NOT change the index.
-        // We perform a Soft Reset (keep total score, just reset round).
+        _isTransitioning = true;
+
+        // --- DEBUG LOG ---
+        Debug.Log($"<color=cyan>[INPUT] Player selected: RETRY</color> (Replaying Enemy #{_currentIndex}: {enemyRoster[_currentIndex].name})");
+
+        scoreManager.HighlightSelection(NavigationAction.Retry);
+        yield return new WaitForSecondsRealtime(selectionDelay);
+
         endManager.RestartGame(resetTotalScore: false);
+        _isTransitioning = false;
     }
 
-    // 2. CONTINUE (Next Enemy)
-    public void OnContinuePressed()
+    // 2. CONTINUE
+    IEnumerator SequenceContinue()
     {
-        _currentIndex++;
+        _isTransitioning = true;
 
+        // --- DEBUG LOG ---
+        Debug.Log($"<color=cyan>[INPUT] Player selected: CONTINUE</color>");
+
+        scoreManager.HighlightSelection(NavigationAction.Continue);
+        yield return new WaitForSecondsRealtime(selectionDelay);
+
+        _currentIndex++;
         if (_currentIndex >= enemyRoster.Count)
         {
-            Debug.Log("Campaign Complete! Looping to start...");
+            Debug.Log("<color=orange>[PROGRESSION] Roster Complete! Looping back to start.</color>");
             _currentIndex = 0;
-            // Optional: You could load a "Credits" scene here instead.
         }
 
-        Debug.Log($"PROGRESSION: Continue to Index {_currentIndex} ({enemyRoster[_currentIndex].name})");
-
-        // 1. Swap the Enemy Data
         LoadEnemyAtIndex(_currentIndex);
-
-        // 2. Soft Reset the Scene (keeps score, resets positions)
         endManager.RestartGame(resetTotalScore: false);
+        _isTransitioning = false;
     }
 
-    // 3. RESTART (Index 0)
-    public void OnFullRestartPressed()
+    // 3. RESTART
+    IEnumerator SequenceRestart()
     {
-        Debug.Log("PROGRESSION: Full Restart (Index 0)");
+        _isTransitioning = true;
+
+        // --- DEBUG LOG ---
+        Debug.Log($"<color=red>[INPUT] Player selected: FULL RESTART</color>");
+
+        scoreManager.HighlightSelection(NavigationAction.Restart);
+        yield return new WaitForSecondsRealtime(selectionDelay);
+
         _currentIndex = 0;
-
         LoadEnemyAtIndex(0);
-
-        // Hard Reset (Wipe score history)
         endManager.RestartGame(resetTotalScore: true);
+        _isTransitioning = false;
     }
 
     private void LoadEnemyAtIndex(int index)
@@ -117,9 +137,10 @@ public class GameProgressionManager : MonoBehaviour
         if (index < 0 || index >= enemyRoster.Count) return;
 
         DuelEnemyProfile targetProfile = enemyRoster[index];
-        if (enemyAI != null)
-        {
-            enemyAI.UpdateProfile(targetProfile);
-        }
+
+        // --- DEBUG LOG ---
+        Debug.Log($"<color=yellow>[PROGRESSION] Loading Enemy Index {index}: {targetProfile.name}</color>");
+
+        if (enemyAI != null) enemyAI.UpdateProfile(targetProfile);
     }
 }

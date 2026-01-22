@@ -58,9 +58,14 @@ public class EnemyDuelAI : MonoBehaviour
         this.difficultyProfile = newProfile;
 
         // Update Skin immediately
-        UpdateVisuals();
+        if (aiRenderer != null && difficultyProfile.skinMaterial != null)
+        {
+            aiRenderer.material = difficultyProfile.skinMaterial;
+        }
 
-        Debug.Log($"ENEMY AI: Profile swapped to {newProfile.name}");
+        // --- DEBUG LOG ---
+        Debug.Log($"<color=magenta>[AI SYSTEM] Profile Updated to: {newProfile.name}</color> | " +
+                  $"Draw Speed: {newProfile.fastestDrawSpeed}-{newProfile.slowestDrawSpeed}s | ");
     }
 
     private void UpdateVisuals()

@@ -35,6 +35,10 @@ public class FailManager : MonoBehaviour
     public float reasonTypingDuration = 1.5f;
     public float delayBetweenPhases = 0.5f;
 
+    [Header("--- Input Safety ---")]
+    [Tooltip("How many seconds to ignore Input after the Fail Screen appears. Prevents accidental skips.")]
+    public float skipInputDelay = 0.8f; // <--- NEW SETTING
+
     [Header("--- Audio ---")]
     public EventReference phase1Sound;
     public EventReference phase2Sound;
@@ -46,10 +50,13 @@ public class FailManager : MonoBehaviour
     public bool IsActive { get; private set; } = false;
 
     private Sequence _currentSeq;
-    private Tween _promptLoopTween; // Separate tween for the pulsing effect
+    private Tween _promptLoopTween;
     private string _finalTitle;
     private string _finalReason;
     private bool _shouldShowOverlay;
+
+    // Internal timer to track safety delay
+    private float _sequenceStartTime;
 
     void Start()
     {
@@ -69,6 +76,10 @@ public class FailManager : MonoBehaviour
 
         IsAnimating = true;
         IsActive = true;
+
+        // --- NEW: Record the time we started ---
+        // We use UnscaledTime because the game is usually in Slow Motion here
+        _sequenceStartTime = Time.unscaledTime;
 
         _currentSeq = DOTween.Sequence().SetUpdate(true);
 
@@ -109,11 +120,11 @@ public class FailManager : MonoBehaviour
         _currentSeq.AppendInterval(delayImageToText);
         if (reasonText) AddTypewriterToSequence(_currentSeq, reasonText, reasonContent, reasonTypingDuration);
 
-        // --- STEP 3: RESTART PROMPT (At the very end) ---
+        // --- STEP 3: RESTART PROMPT ---
         _currentSeq.AppendCallback(() =>
         {
             ShowRestartPrompt();
-            IsAnimating = false; // Sequence is done, player can now reset
+            IsAnimating = false;
         });
     }
 
@@ -122,11 +133,8 @@ public class FailManager : MonoBehaviour
     {
         if (restartPromptGroup == null) return;
 
-        // 1. Fade In
         restartPromptGroup.DOFade(1f, promptFadeInDuration).SetUpdate(true);
 
-        // 2. Start Pulsing Loop (Separate Tween)
-        // This ensures the pulsing continues even after the main sequence dies
         _promptLoopTween = restartPromptGroup.transform.DOScale(1.05f, 0.8f)
             .SetLoops(-1, LoopType.Yoyo)
             .SetEase(Ease.InOutSine)
@@ -136,6 +144,13 @@ public class FailManager : MonoBehaviour
     public void SkipAnimation()
     {
         if (!IsAnimating) return;
+
+        // --- NEW: SAFETY CHECK ---
+        // If not enough time has passed since the sequence started, IGNORE the skip.
+        if (Time.unscaledTime < _sequenceStartTime + skipInputDelay)
+        {
+            return;
+        }
 
         _currentSeq.Kill();
 
@@ -188,7 +203,7 @@ public class FailManager : MonoBehaviour
         // Reset Prompt
         if (restartPromptGroup)
         {
-            restartPromptGroup.alpha = 0f; // Hidden by default
+            restartPromptGroup.alpha = 0f;
             restartPromptGroup.transform.localScale = Vector3.one;
         }
     }

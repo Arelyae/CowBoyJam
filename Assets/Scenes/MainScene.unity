@@ -37101,6 +37101,7 @@ MonoBehaviour:
   continueInput: {fileID: -3105755096044777444, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   retryInput: {fileID: 2010083948814312958, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   restartInput: {fileID: 232926567855262326, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  selectionDelay: 0.6
 --- !u!1001 &871898979
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -85894,7 +85895,10 @@ MonoBehaviour:
   drawSpeedBackground: {fileID: 379982529}
   reflexText: {fileID: 826373951}
   reflexBackground: {fileID: 457515629}
-  navPromptsGroup: {fileID: 154416558}
+  navPromptsContainer: {fileID: 154416558}
+  retryPrompt: {fileID: 1405319719}
+  continuePrompt: {fileID: 1498360109}
+  restartPrompt: {fileID: 1299984196}
   delayBeforeScoreAppears: 1.5
   labelTypingDuration: 0.3
   delayBeforeCounting: 0.5
@@ -85927,6 +85931,13 @@ MonoBehaviour:
       Data3: 1984070841
       Data4: 999094423
     Path: event:/SoundEffects/UI/paperSlide
+  confirmSelectionSound:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
   audioTriggerStep: 10
   lowFreqMotor: 0.1
   highFreqMotor: 0.1
@@ -91991,6 +92002,7 @@ MonoBehaviour:
   titleTypingDuration: 0.25
   reasonTypingDuration: 0.5
   delayBetweenPhases: 0.5
+  skipInputDelay: 0.8
   phase1Sound:
     Guid:
       Data1: -587797934

@@ -36,26 +36,16 @@ public class EndManager : MonoBehaviour
     [Header("--- FAIL SCREEN STRINGS ---")]
     public string deathTitle = "YOU DIED";
     [TextArea] public string deathReason = "Shot through the heart.";
-
     public string dishonorTitle = "DISHONORABLE";
     [TextArea] public string dishonorReason = "You fired before the draw.";
-
     public string fumbleTitle = "FUMBLE";
-    [Tooltip("Leave empty to use dynamic reason.")]
     [TextArea] public string fumbleReasonOverride = "";
 
     // Internal State
     private bool gameIsOver = false;
 
-    private void OnEnable()
-    {
-        if (reloadAction != null) reloadAction.action.Enable();
-    }
-
-    private void OnDisable()
-    {
-        if (reloadAction != null) reloadAction.action.Disable();
-    }
+    private void OnEnable() { if (reloadAction != null) reloadAction.action.Enable(); }
+    private void OnDisable() { if (reloadAction != null) reloadAction.action.Disable(); }
 
     void Start()
     {
@@ -69,16 +59,11 @@ public class EndManager : MonoBehaviour
     {
         if (!gameIsOver) return;
 
-        // We ALWAYS listen for input here to allow skipping animations.
+        // Check for ANY generic "confirm/reset" input
         bool pressedRestart = false;
-
         if (reloadAction != null && reloadAction.action.WasPressedThisFrame()) pressedRestart = true;
         if (Input.GetKeyDown(KeyCode.R)) pressedRestart = true;
-        if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame) pressedRestart = true;
-
-        // Also check South Button (A/X) specifically for skipping score text, 
-        // as players often mash 'A' to skip.
-        if (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame) pressedRestart = true;
+        if (Gamepad.current != null && (Gamepad.current.buttonNorth.wasPressedThisFrame || Gamepad.current.buttonSouth.wasPressedThisFrame)) pressedRestart = true;
 
         if (pressedRestart)
         {
@@ -88,35 +73,32 @@ public class EndManager : MonoBehaviour
 
     private void HandleResetInput()
     {
-        // PRIORITY 1: Skip Fail Animation
+        // 1. Skip Fail Animation
         if (failManager != null && failManager.IsAnimating)
         {
             failManager.SkipAnimation();
-            return; // Stop here
+            return;
         }
 
-        // PRIORITY 2: Skip Score/Victory Animation
+        // 2. Skip Score Animation
         if (scoreManager != null && scoreManager.IsAnimating)
         {
             scoreManager.SkipAnimation();
-            return; // Stop here
+            return;
         }
 
-        // PRIORITY 3: BLOCKER - Game Progression Logic
-        // If the Score Screen is finished animating and waiting for input (Prompts are visible),
-        // we DO NOT trigger a generic restart here. 
-        // We yield control to the GameProgressionManager which listens for specific keys.
+        // 3. BLOCKER: Game Progression Logic
+        // If the Score Screen is showing inputs, we DO NOT reset here.
+        // We let GameProgressionManager handle the specific inputs.
         if (scoreManager != null && scoreManager.AreInputsActive)
         {
             return;
         }
 
-        // PRIORITY 4: Standard Restart (Fail Screen or Fallback)
-        // Only runs if we are NOT on the Victory Input screen.
+        // 4. Standard Restart (Used for Fail Screen or Fallback)
         RestartGame(resetTotalScore: false);
     }
 
-    // --- VICTORY LOGIC ---
     public void TriggerVictory(string message)
     {
         if (gameIsOver) return;
@@ -132,28 +114,21 @@ public class EndManager : MonoBehaviour
     IEnumerator SlowMotionSequence()
     {
         if (delayBeforeSlowMo > 0) yield return new WaitForSeconds(delayBeforeSlowMo);
-
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, targetTimeScale, slowMoDuration)
-            .SetUpdate(true)
-            .SetEase(slowMoEase);
-
+            .SetUpdate(true).SetEase(slowMoEase);
         Time.fixedDeltaTime = 0.02f * targetTimeScale;
     }
 
-    // --- DEFEAT LOGIC ---
     public void TriggerDefeat(string rawReason)
     {
         if (gameIsOver) return;
         gameIsOver = true;
 
         if (enemyAI != null) enemyAI.StopCombat();
-
         if (scoreManager) scoreManager.ResetScore();
 
         DOTween.To(() => Time.timeScale, x => Time.timeScale = x, 0.2f, 0.2f)
-            .SetDelay(defeatDelay)
-            .SetUpdate(true)
-            .SetEase(Ease.OutQuart)
+            .SetDelay(defeatDelay).SetUpdate(true).SetEase(Ease.OutQuart)
             .OnStart(() => { Time.fixedDeltaTime = 0.02f * 0.2f; });
 
         if (failManager)
@@ -162,24 +137,13 @@ public class EndManager : MonoBehaviour
             string finalReason = deathReason;
             bool showRedOverlay = true;
 
-            if (rawReason.Contains("Dishonor") || rawReason.Contains("Premature"))
-            {
-                finalTitle = dishonorTitle;
-                finalReason = dishonorReason;
-                showRedOverlay = false;
-            }
-            else if (rawReason.Contains("Jammed") || rawReason.Contains("Misfire") || rawReason.Contains("Hesitated"))
-            {
-                finalTitle = fumbleTitle;
-                finalReason = !string.IsNullOrEmpty(fumbleReasonOverride) ? fumbleReasonOverride : rawReason;
-                showRedOverlay = false;
-            }
+            if (rawReason.Contains("Dishonor") || rawReason.Contains("Premature")) { finalTitle = dishonorTitle; finalReason = dishonorReason; showRedOverlay = false; }
+            else if (rawReason.Contains("Jammed") || rawReason.Contains("Misfire")) { finalTitle = fumbleTitle; finalReason = !string.IsNullOrEmpty(fumbleReasonOverride) ? fumbleReasonOverride : rawReason; showRedOverlay = false; }
 
             failManager.TriggerFailSequence(finalTitle, finalReason, showRedOverlay);
         }
     }
 
-    // --- RESET LOGIC ---
     public void RestartGame(bool resetTotalScore = true)
     {
         Debug.Log($"--- RESETTING GAME (Wipe Score: {resetTotalScore}) ---");
@@ -194,7 +158,6 @@ public class EndManager : MonoBehaviour
         if (scoreManager)
         {
             scoreManager.ResetScore();
-            // Note: If you stored persistent data in ScoreManager, clear it here if resetTotalScore is true
         }
 
         if (tutorialManager != null)
@@ -204,11 +167,7 @@ public class EndManager : MonoBehaviour
         else
         {
             if (cinematographer != null) cinematographer.StopCinematics();
-            if (audioDirector != null)
-            {
-                audioDirector.StopMusic();
-                audioDirector.StartMusic();
-            }
+            if (audioDirector != null) { audioDirector.StopMusic(); audioDirector.StartMusic(); }
             if (cameraDirector) cameraDirector.ResetCamera();
             if (playerController) playerController.ResetPlayer();
             if (enemyAI) enemyAI.ResetEnemy();
