@@ -15,7 +15,13 @@ public class EnemyDuelAI : MonoBehaviour
     public DuelController player;
     public ScoreManager scoreManager;
     public Animator aiAnimator;
-    public Renderer aiRenderer;
+
+    [Header("--- Visuals (Materials) ---")]
+    [Tooltip("The Renderer for the normal 'Alive' model.")]
+    public SkinnedMeshRenderer aliveRenderer;
+
+    [Tooltip("The Renderer for the 'Ragdoll' model (so the skin matches upon death).")]
+    public SkinnedMeshRenderer ragdollRenderer;
 
     [Header("--- Target Reference ---")]
     [Tooltip("Drag the Player's Camera or Head object here so the AI aims at the face.")]
@@ -50,29 +56,36 @@ public class EnemyDuelAI : MonoBehaviour
         ResetEnemy();
     }
 
-    // --- NEW: CALLED BY PROGRESSION MANAGER ---
+    // --- CALLED BY PROGRESSION MANAGER ---
     public void UpdateProfile(DuelEnemyProfile newProfile)
     {
         if (newProfile == null) return;
 
         this.difficultyProfile = newProfile;
 
-        // Update Skin immediately
-        if (aiRenderer != null && difficultyProfile.skinMaterial != null)
-        {
-            aiRenderer.material = difficultyProfile.skinMaterial;
-        }
+        // Apply the new skin to both models immediately
+        UpdateVisuals();
 
         // --- DEBUG LOG ---
         Debug.Log($"<color=magenta>[AI SYSTEM] Profile Updated to: {newProfile.name}</color> | " +
-                  $"Draw Speed: {newProfile.fastestDrawSpeed}-{newProfile.slowestDrawSpeed}s | ");
+                  $"Draw Speed: {newProfile.fastestDrawSpeed}-{newProfile.slowestDrawSpeed}s");
     }
 
     private void UpdateVisuals()
     {
-        if (aiRenderer != null && difficultyProfile != null && difficultyProfile.skinMaterial != null)
+        if (difficultyProfile != null && difficultyProfile.skinMaterial != null)
         {
-            aiRenderer.material = difficultyProfile.skinMaterial;
+            // Apply to Alive Model
+            if (aliveRenderer != null)
+            {
+                aliveRenderer.material = difficultyProfile.skinMaterial;
+            }
+
+            // Apply to Ragdoll Model
+            if (ragdollRenderer != null)
+            {
+                ragdollRenderer.material = difficultyProfile.skinMaterial;
+            }
         }
     }
     // ------------------------------------------

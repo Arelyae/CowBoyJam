@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7da906bc3a65cb24396da61fc4f6272a, type: 3}
-  m_Name: Enemy1
+  m_Name: Enemy7
   m_EditorClassIdentifier: 
-  enemyName: John Doe
-  minWaitTime: 3
+  enemyName: Billy the grown up
+  minWaitTime: 5
   maxWaitTime: 5
-  fastestDrawSpeed: 1
-  slowestDrawSpeed: 2
+  fastestDrawSpeed: 0.5
+  slowestDrawSpeed: 0.6
   musicIntensityStep: 10
-  skinMaterial: {fileID: 2100000, guid: 9f4e9560b3e6c5e49bdf6ca37ec6dedf, type: 2}
+  skinMaterial: {fileID: 2100000, guid: 7094fa269254da44a8989f8788d4c781, type: 2}

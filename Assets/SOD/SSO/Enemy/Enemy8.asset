@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7da906bc3a65cb24396da61fc4f6272a, type: 3}
-  m_Name: Enemy1
+  m_Name: Enemy8
   m_EditorClassIdentifier: 
-  enemyName: John Doe
-  minWaitTime: 3
-  maxWaitTime: 5
-  fastestDrawSpeed: 1
-  slowestDrawSpeed: 2
+  enemyName: Glowing Eli
+  minWaitTime: 6
+  maxWaitTime: 7
+  fastestDrawSpeed: 0.7
+  slowestDrawSpeed: 0.8
   musicIntensityStep: 10
-  skinMaterial: {fileID: 2100000, guid: 9f4e9560b3e6c5e49bdf6ca37ec6dedf, type: 2}
+  skinMaterial: {fileID: 2100000, guid: 1e756742ff3f9aa438438d06fcfe7d8b, type: 2}
