@@ -38626,6 +38626,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f6514860bf11fbf4b8fd5311d58dae6e, type: 2}
   - {fileID: 11400000, guid: a0f0f0a9594144d4e83c56f03f211e48, type: 2}
   - {fileID: 11400000, guid: fefa6bf4a8fdc1b41984f5f090d27da7, type: 2}
+  - {fileID: 11400000, guid: 53983dffd5ee694478f63efa3b6a322d, type: 2}
   enemyNameText: {fileID: 225530852}
   nameTypingDuration: 0.5
   typingSound:
@@ -59633,6 +59634,7 @@ MonoBehaviour:
   enemyAI: {fileID: 1345491103}
   playerController: {fileID: 474596864}
   arbiter: {fileID: 1636871959}
+  audioDirector: {fileID: 1555895232}
   availableShots:
   - name: Dolly1
     virtualCamera: {fileID: 1123394234}
@@ -71280,6 +71282,7 @@ MonoBehaviour:
       Data4: 104858783
     Path: event:/Ambiance/Music_B
   intensityParamName: Intensity
+  markerSearchString: NextShot_
   victoryStingerParams:
   - StingerA
   - StingerB

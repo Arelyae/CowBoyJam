@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy4
   m_EditorClassIdentifier: 
   enemyName: Grandad O'Slow
-  minWaitTime: 8
-  maxWaitTime: 10
+  minWaitTime: 18
+  maxWaitTime: 20
   fastestDrawSpeed: 10
   slowestDrawSpeed: 10
   musicIntensityStep: 10

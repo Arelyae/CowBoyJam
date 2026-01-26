@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy1
   m_EditorClassIdentifier: 
   enemyName: John Doe
-  minWaitTime: 3
-  maxWaitTime: 5
+  minWaitTime: 6
+  maxWaitTime: 10
   fastestDrawSpeed: 1
   slowestDrawSpeed: 2
   musicIntensityStep: 10

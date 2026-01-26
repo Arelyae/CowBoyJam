@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Enemy8
   m_EditorClassIdentifier: 
   enemyName: Glowing Eli
-  minWaitTime: 5
+  minWaitTime: 15
   maxWaitTime: 30
   fastestDrawSpeed: 0.8
   slowestDrawSpeed: 1

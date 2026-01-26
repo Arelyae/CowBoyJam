@@ -17,6 +17,7 @@ public class DuelCinematographer : MonoBehaviour
     public EnemyDuelAI enemyAI;
     public DuelController playerController;
     public DuelArbiter arbiter;
+    public DuelAudioDirector audioDirector; // <--- NEW REFERENCE
 
     [Header("--- Cinematic Sequences ---")]
     [Tooltip("The script will step through these shots one by one when TriggerNextShot() is called.")]
@@ -30,7 +31,7 @@ public class DuelCinematographer : MonoBehaviour
     private float _duelStartTime;
     private CinemachineCamera _currentCam;
     private bool _isActive = false;
-    private bool _isLocked = false; // NEW: Prevents switching on Fumble
+    private bool _isLocked = false;
     private int _shotIndex = 0;
 
     // Priorities
@@ -40,11 +41,17 @@ public class DuelCinematographer : MonoBehaviour
     // --- EVENT LISTENING ---
     private void OnEnable()
     {
+        // 1. Listen to Player Events (Fumble/Death)
         if (playerController != null)
         {
             playerController.OnFumble += LockCamera;
-            // Optional: You can also lock on Death if you want the camera to stay put when shot
             playerController.OnDeath += LockCamera;
+        }
+
+        // 2. NEW: Listen to Audio Markers (Music Cuts)
+        if (audioDirector != null)
+        {
+            audioDirector.OnNextShotMarker += HandleAudioMarker;
         }
     }
 
@@ -55,7 +62,22 @@ public class DuelCinematographer : MonoBehaviour
             playerController.OnFumble -= LockCamera;
             playerController.OnDeath -= LockCamera;
         }
+
+        if (audioDirector != null)
+        {
+            audioDirector.OnNextShotMarker -= HandleAudioMarker;
+        }
     }
+
+    // --- NEW HANDLER ---
+    private void HandleAudioMarker(string markerName)
+    {
+        // The AudioDirector has already filtered this to ensure it contains "NextShot_"
+        // We simply proceed to the next camera in the list.
+        // (You could parse markerName if you wanted specific shot logic, e.g. "NextShot_CloseUp")
+        TriggerNextShot();
+    }
+    // -------------------
 
     private void LockCamera()
     {
@@ -85,8 +107,6 @@ public class DuelCinematographer : MonoBehaviour
         }
 
         // 2. CHECK BLOCKERS (Danger Zone OR Fumble Lock)
-        // If we are in the danger zone OR the player has fumbled, we DO NOT switch.
-        // We stay on the current shot to show the tension or the failure.
         if (IsInDangerZone() || _isLocked)
         {
             return;
@@ -111,7 +131,7 @@ public class DuelCinematographer : MonoBehaviour
         if (!_isActive) return;
 
         _isActive = false;
-        _isLocked = false; // Clean reset
+        _isLocked = false;
 
         ResetAllCameras();
     }
@@ -122,6 +142,8 @@ public class DuelCinematographer : MonoBehaviour
     {
         float enemyWait = (enemyAI.difficultyProfile != null) ? enemyAI.difficultyProfile.minWaitTime : 2.0f;
         float switchCutoffTime = _duelStartTime + enemyWait - safetyBuffer;
+
+        // If we are past the cutoff, we are in danger.
         return Time.time > switchCutoffTime;
     }
 
@@ -136,6 +158,8 @@ public class DuelCinematographer : MonoBehaviour
             shot.virtualCamera.Priority = PRIORITY_ACTIVE;
             _currentCam = shot.virtualCamera;
 
+            // Optional: Reset Dolly Track if using Tracked Dolly
+            // (Requires CinemachineSplineDolly or similar component)
             var dolly = shot.virtualCamera.GetComponent<CinemachineSplineDolly>();
             if (dolly != null)
             {
@@ -147,6 +171,10 @@ public class DuelCinematographer : MonoBehaviour
     CinematicShot GetNextShot()
     {
         if (availableShots.Count == 0) return null;
+
+        // If we run out of shots, wrap around? Or stop?
+        // Current logic: Stop (returns null if index >= count)
+        // If you want to loop: _shotIndex % availableShots.Count
         if (_shotIndex >= availableShots.Count) return null;
 
         CinematicShot shot = availableShots[_shotIndex];

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy7
   m_EditorClassIdentifier: 
   enemyName: Billy the grown up
-  minWaitTime: 3
-  maxWaitTime: 5
+  minWaitTime: 13
+  maxWaitTime: 15
   fastestDrawSpeed: 0.7
   slowestDrawSpeed: 0.8
   musicIntensityStep: 10

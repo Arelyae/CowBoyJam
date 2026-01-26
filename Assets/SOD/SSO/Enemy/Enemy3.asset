@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy3
   m_EditorClassIdentifier: 
   enemyName: Joe McSparrow
-  minWaitTime: 2
-  maxWaitTime: 5
+  minWaitTime: 5
+  maxWaitTime: 10
   fastestDrawSpeed: 0.7
   slowestDrawSpeed: 0.8
   musicIntensityStep: 15

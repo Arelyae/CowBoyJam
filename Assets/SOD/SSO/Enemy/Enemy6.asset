@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7da906bc3a65cb24396da61fc4f6272a, type: 3}
   m_Name: Enemy6
   m_EditorClassIdentifier: 
-  enemyName: John FiveSec
-  minWaitTime: 5
-  maxWaitTime: 5
+  enemyName: John ElevenSec
+  minWaitTime: 11
+  maxWaitTime: 11
   fastestDrawSpeed: 0.5
   slowestDrawSpeed: 0.6
   musicIntensityStep: 10

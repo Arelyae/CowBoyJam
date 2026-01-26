@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Enemy5
   m_EditorClassIdentifier: 
   enemyName: Mac McKenzie
-  minWaitTime: 5
-  maxWaitTime: 6
+  minWaitTime: 8
+  maxWaitTime: 10
   fastestDrawSpeed: 1
   slowestDrawSpeed: 2
   musicIntensityStep: 10
