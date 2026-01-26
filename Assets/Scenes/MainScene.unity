@@ -38620,6 +38620,12 @@ MonoBehaviour:
   enemyRoster:
   - {fileID: 11400000, guid: 509de8d5e6ec76f4b9ab3d4c87e8b4e1, type: 2}
   - {fileID: 11400000, guid: 54272d0a50e55b74d99166a30caea093, type: 2}
+  - {fileID: 11400000, guid: 2d77950513b2d634d9ae8003a8819483, type: 2}
+  - {fileID: 11400000, guid: d036e694c5f58ee4a80cec5a239a37a9, type: 2}
+  - {fileID: 11400000, guid: 0396fecdba8dcfb4c924f78f214136a6, type: 2}
+  - {fileID: 11400000, guid: f6514860bf11fbf4b8fd5311d58dae6e, type: 2}
+  - {fileID: 11400000, guid: a0f0f0a9594144d4e83c56f03f211e48, type: 2}
+  - {fileID: 11400000, guid: fefa6bf4a8fdc1b41984f5f090d27da7, type: 2}
   enemyNameText: {fileID: 225530852}
   nameTypingDuration: 0.5
   typingSound:
