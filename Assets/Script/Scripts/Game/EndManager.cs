@@ -158,10 +158,17 @@ public class EndManager : MonoBehaviour
         if (failManager) failManager.Hide();
         if (scoreManager) scoreManager.DisplayScore();
 
+        // --- UPDATED AUDIO LOGIC ---
         if (audioDirector != null && enemyAI != null && enemyAI.difficultyProfile != null)
         {
-            audioDirector.IncreaseIntensity(enemyAI.difficultyProfile.musicIntensityStep);
+            // 1. Play the Stinger
+            audioDirector.PlayVictoryStinger(-1);
+
+            // 2. AND Increase the Intensity (so the music gets more intense alongside the stinger)
+            float step = enemyAI.difficultyProfile.musicIntensityStep;
+            audioDirector.IncreaseIntensity(step);
         }
+        // ---------------------------
 
         StartCoroutine(SlowMotionSequence());
     }

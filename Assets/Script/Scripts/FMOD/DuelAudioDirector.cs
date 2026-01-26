@@ -1,16 +1,23 @@
 using UnityEngine;
 using FMODUnity;
 using FMOD.Studio;
+using System.Collections.Generic;
+using DG.Tweening;
 
 public class DuelAudioDirector : MonoBehaviour
 {
     [Header("--- FMOD Settings ---")]
     public EventReference duelMusic;
-    [Tooltip("Name of the local parameter in FMOD Studio")]
+
+    [Tooltip("Name of the global intensity parameter in FMOD Studio")]
     public string intensityParamName = "Intensity";
 
+    [Header("--- Stingers (Parameters) ---")]
+    [Tooltip("List of FMOD Parameter NAMES (strings) that trigger a stinger within the main music event.")]
+    public List<string> victoryStingerParams;
+
     [Header("--- Transition Settings ---")]
-    [Tooltip("How fast the intensity moves towards the target (Units per Second). Example: 20 means it takes 5 seconds to go from 0 to 100.")]
+    [Tooltip("How fast the intensity moves towards the target.")]
     public float smoothingSpeed = 20f;
 
     // Internal FMOD instance
@@ -19,6 +26,9 @@ public class DuelAudioDirector : MonoBehaviour
     // Logic for smoothing
     private float currentIntensity = 0f;
     private float targetIntensity = 0f;
+
+    // Logic for No-Repeat
+    private int lastStingerIndex = -1;
 
     void Start()
     {
@@ -30,14 +40,10 @@ public class DuelAudioDirector : MonoBehaviour
 
     void Update()
     {
-        // Only update if we have a valid instance and we aren't at the target yet
-        // We use a small epsilon (0.01f) to stop processing when close enough
+        // Smoothly interpolate Intensity Parameter
         if (musicInstance.isValid() && Mathf.Abs(currentIntensity - targetIntensity) > 0.01f)
         {
-            // Move current towards target smoothly
             currentIntensity = Mathf.MoveTowards(currentIntensity, targetIntensity, smoothingSpeed * Time.deltaTime);
-
-            // Apply to FMOD
             musicInstance.setParameterByName(intensityParamName, currentIntensity);
         }
     }
@@ -49,38 +55,85 @@ public class DuelAudioDirector : MonoBehaviour
         musicInstance = RuntimeManager.CreateInstance(duelMusic);
         musicInstance.start();
         musicInstance.release();
-
-        // Apply initial state instantly
         musicInstance.setParameterByName(intensityParamName, currentIntensity);
     }
 
-    // --- NEW METHOD (REQUIRED FOR FINAL SCORE) ---
+    // --- UPDATED: NO REPEAT LOGIC + AUTO RESET ---
+    public void PlayVictoryStinger(int index = -1)
+    {
+        if (victoryStingerParams == null || victoryStingerParams.Count == 0) return;
+        if (!musicInstance.isValid()) return;
+
+        int targetIndex = -1;
+
+        // A. Specific Request (Force index)
+        if (index != -1)
+        {
+            targetIndex = Mathf.Clamp(index, 0, victoryStingerParams.Count - 1);
+        }
+        // B. Random Request (Avoid Repeat)
+        else
+        {
+            if (victoryStingerParams.Count == 1)
+            {
+                // Only one option, we have to repeat it
+                targetIndex = 0;
+            }
+            else
+            {
+                // Reroll until we get a different index
+                do
+                {
+                    targetIndex = Random.Range(0, victoryStingerParams.Count);
+                }
+                while (targetIndex == lastStingerIndex);
+            }
+        }
+
+        // Save for next time
+        lastStingerIndex = targetIndex;
+
+        // Trigger the Stinger
+        string paramName = victoryStingerParams[targetIndex];
+
+        if (!string.IsNullOrEmpty(paramName))
+        {
+            Debug.Log($"[AUDIO] Triggering Stinger: '{paramName}' (1 -> 0)");
+
+            // 1. Trigger ON
+            musicInstance.setParameterByName(paramName, 1f);
+
+            // 2. Trigger OFF (Auto-Reset after 0.1s)
+            DOVirtual.DelayedCall(0.1f, () =>
+            {
+                if (musicInstance.isValid())
+                {
+                    musicInstance.setParameterByName(paramName, 0f);
+                }
+            }).SetUpdate(true);
+        }
+    }
+    // ---------------------------------------------
+
     public void SetIntensity(float value)
     {
         targetIntensity = Mathf.Clamp(value, 0f, 100f);
         Debug.Log($"[AUDIO] Target Intensity FORCED to: {targetIntensity}");
     }
-    // ---------------------------------------------
 
     public void IncreaseIntensity(float amount)
     {
-        // Add to TARGET
         targetIntensity = Mathf.Clamp(targetIntensity + amount, 0f, 100f);
-        Debug.Log($"[AUDIO] Target Intensity INCREASED to: {targetIntensity}");
     }
 
     public void DecreaseIntensity(float amount)
     {
-        // Subtract from TARGET
         targetIntensity = Mathf.Clamp(targetIntensity - amount, 0f, 100f);
-        Debug.Log($"[AUDIO] Target Intensity DECREASED to: {targetIntensity}");
     }
 
     public void ResetIntensity()
     {
-        // Just set the target. The Update loop handles the smooth fade down.
         targetIntensity = 0f;
-        Debug.Log($"[AUDIO] Target Intensity Set to 0 (Smoothing down...)");
     }
 
     public void StopMusic()

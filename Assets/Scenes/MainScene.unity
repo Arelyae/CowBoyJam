@@ -71278,7 +71278,7 @@ MonoBehaviour:
       Data2: 1238996937
       Data3: 1793915037
       Data4: 185823224
-    Path: event:/Ambiance/Music
+    Path: event:/Ambiance/Music_A
   intensityParamName: Intensity
   smoothingSpeed: 20
 --- !u!1001 &1556729991
