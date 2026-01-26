@@ -54,6 +54,14 @@ public class DuelAudioDirector : MonoBehaviour
         musicInstance.setParameterByName(intensityParamName, currentIntensity);
     }
 
+    // --- NEW METHOD (REQUIRED FOR FINAL SCORE) ---
+    public void SetIntensity(float value)
+    {
+        targetIntensity = Mathf.Clamp(value, 0f, 100f);
+        Debug.Log($"[AUDIO] Target Intensity FORCED to: {targetIntensity}");
+    }
+    // ---------------------------------------------
+
     public void IncreaseIntensity(float amount)
     {
         // Add to TARGET

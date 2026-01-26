@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Enemy7
   m_EditorClassIdentifier: 
   enemyName: Billy the grown up
-  minWaitTime: 5
+  minWaitTime: 3
   maxWaitTime: 5
-  fastestDrawSpeed: 0.5
-  slowestDrawSpeed: 0.6
+  fastestDrawSpeed: 0.7
+  slowestDrawSpeed: 0.8
   musicIntensityStep: 10
   skinMaterial: {fileID: 2100000, guid: 7094fa269254da44a8989f8788d4c781, type: 2}

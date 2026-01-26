@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Enemy8
   m_EditorClassIdentifier: 
   enemyName: Glowing Eli
-  minWaitTime: 6
-  maxWaitTime: 7
-  fastestDrawSpeed: 0.7
-  slowestDrawSpeed: 0.8
+  minWaitTime: 5
+  maxWaitTime: 50
+  fastestDrawSpeed: 0.8
+  slowestDrawSpeed: 1
   musicIntensityStep: 10
   skinMaterial: {fileID: 2100000, guid: 1e756742ff3f9aa438438d06fcfe7d8b, type: 2}

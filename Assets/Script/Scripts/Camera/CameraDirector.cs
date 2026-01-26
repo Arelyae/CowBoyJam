@@ -48,7 +48,7 @@ public class CameraDirector : MonoBehaviour
     }
 
     // =================================================================================
-    //                                  INSPECTOR
+    //                                     INSPECTOR
     // =================================================================================
 
     [Header("--- Cinemachine 3 Setup ---")]
@@ -170,6 +170,23 @@ public class CameraDirector : MonoBehaviour
         _currentTarget = null;
         DisableSplitScreen();
     }
+
+    // --- NEW: CALLED BY FINAL SCORE MANAGER ---
+    public void DisableAllCameras()
+    {
+        Debug.Log("--- DISABLING ALL GAMEPLAY CAMERAS FOR CINEMATIC ---");
+
+        // Stop any running animations
+        DOTween.Kill("KillCamTween");
+        if (killCamVC) killCamVC.transform.DOKill();
+
+        // Set all priorities to 0 so the Final Camera (Priority 200) takes over
+        if (killCamVC) killCamVC.Priority = 0;
+        if (gameplayVC) gameplayVC.Priority = 0;
+
+        DisableSplitScreen();
+    }
+    // ------------------------------------------
 
     // =================================================================================
     //                                NEW SCENARIO LOGIC (Scene Splines)
