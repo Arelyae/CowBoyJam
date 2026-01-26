@@ -19,3 +19,4 @@ MonoBehaviour:
   slowestDrawSpeed: 2
   musicIntensityStep: 10
   skinMaterial: {fileID: 2100000, guid: 9f4e9560b3e6c5e49bdf6ca37ec6dedf, type: 2}
+  cinematicSequence: []

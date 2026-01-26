@@ -1,8 +1,19 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 [CreateAssetMenu(fileName = "NewEnemyProfile", menuName = "Duel/Enemy Profile")]
 public class DuelEnemyProfile : ScriptableObject
 {
+    [System.Serializable]
+    public struct CinematicStep
+    {
+        [Tooltip("Name of the Camera GameObject in the scene.")]
+        public string cameraName;
+
+        [Tooltip("Time in seconds to hold this shot. Set to 0 to wait for an Audio Marker (NextShot_).")]
+        public float duration;
+    }
+
     [Header("Identité")]
     public string enemyName = "John Doe";
 
@@ -13,18 +24,17 @@ public class DuelEnemyProfile : ScriptableObject
     public float maxWaitTime = 5.0f;
 
     [Header("Vitesse de Tir (Difficulté)")]
-    [Tooltip("Le temps le plus rapide possible pour ce type d'ennemi (ex: 0.3s = Boss)")]
     public float fastestDrawSpeed = 0.4f;
-
-    [Tooltip("Le temps le plus lent possible (ex: 1.0s = Facile)")]
     public float slowestDrawSpeed = 0.8f;
 
     [Header("Audio Atmosphere")]
-    [Range(0f, 100f)] // UPDATED RANGE
-    [Tooltip("How much the music 'Intensity' parameter increases when you beat this enemy (0-100).")]
-    public float musicIntensityStep = 10f; // Default changed to 10 for the new scale
+    [Range(0f, 100f)]
+    public float musicIntensityStep = 10f;
 
     [Header("Bonus (Optionnel)")]
-    [Tooltip("Matériau spécifique pour cet ennemi (si vous voulez changer sa tenue)")]
     public Material skinMaterial;
+
+    [Header("--- Cinematics ---")]
+    [Tooltip("Define the sequence of shots. Use Duration > 0 for auto-switch, or 0 to wait for music markers.")]
+    public List<CinematicStep> cinematicSequence;
 }

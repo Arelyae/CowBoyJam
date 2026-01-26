@@ -1,54 +1,55 @@
 using UnityEngine;
-using Unity.Cinemachine; // Unity 6 / Cinemachine 3.x
+using Unity.Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using DG.Tweening; // Using DOTween for reliable timers
 
 public class DuelCinematographer : MonoBehaviour
 {
-    [System.Serializable]
-    public class CinematicShot
+    // Internal struct to hold the runtime data
+    private class RuntimeShot
     {
-        public string name;
-        [Tooltip("The Virtual Camera to activate for this shot.")]
-        public CinemachineCamera virtualCamera;
+        public CinemachineCamera cam;
+        public float duration;
     }
 
     [Header("--- Logic Links ---")]
     public EnemyDuelAI enemyAI;
     public DuelController playerController;
-    public DuelArbiter arbiter;
-    public DuelAudioDirector audioDirector; // <--- NEW REFERENCE
+    public DuelAudioDirector audioDirector;
 
-    [Header("--- Cinematic Sequences ---")]
-    [Tooltip("The script will step through these shots one by one when TriggerNextShot() is called.")]
-    public List<CinematicShot> availableShots;
+    [Header("--- Scene Registry ---")]
+    [Tooltip("Drag EVERY Cinemachine Camera in your scene here.")]
+    public List<CinemachineCamera> allSceneCameras;
+
+    // The Playlist now holds our runtime data struct
+    private List<RuntimeShot> _currentPlaylist = new List<RuntimeShot>();
 
     [Header("--- Safety ---")]
-    [Tooltip("Ignore 'Next Shot' triggers if we are this close (in seconds) to the Enemy's attack time.")]
     public float safetyBuffer = 1.0f;
 
     // Internal State
     private float _duelStartTime;
-    private CinemachineCamera _currentCam;
+    private CinemachineCamera _activeCam;
     private bool _isActive = false;
     private bool _isLocked = false;
-    private int _shotIndex = 0;
+    private int _playlistIndex = 0;
+
+    // Timer Reference (so we can kill it if an Audio Marker happens first)
+    private Tween _shotTimer;
 
     // Priorities
     private const int PRIORITY_ACTIVE = 20;
     private const int PRIORITY_INACTIVE = 0;
 
-    // --- EVENT LISTENING ---
     private void OnEnable()
     {
-        // 1. Listen to Player Events (Fumble/Death)
         if (playerController != null)
         {
             playerController.OnFumble += LockCamera;
             playerController.OnDeath += LockCamera;
         }
-
-        // 2. NEW: Listen to Audio Markers (Music Cuts)
         if (audioDirector != null)
         {
             audioDirector.OnNextShotMarker += HandleAudioMarker;
@@ -62,27 +63,59 @@ public class DuelCinematographer : MonoBehaviour
             playerController.OnFumble -= LockCamera;
             playerController.OnDeath -= LockCamera;
         }
-
         if (audioDirector != null)
         {
             audioDirector.OnNextShotMarker -= HandleAudioMarker;
         }
     }
 
-    // --- NEW HANDLER ---
+    // --- LOADING THE PROFILE ---
+    public void LoadProfileCinematics(DuelEnemyProfile profile)
+    {
+        _currentPlaylist.Clear();
+        StopCinematics(); // Clear state
+
+        if (profile.cinematicSequence == null || profile.cinematicSequence.Count == 0)
+        {
+            Debug.Log($"[CINEMATICS] Enemy {profile.enemyName} has no shots defined.");
+            return;
+        }
+
+        foreach (var step in profile.cinematicSequence)
+        {
+            // Find the camera by name
+            CinemachineCamera foundCam = allSceneCameras.FirstOrDefault(c => c.gameObject.name == step.cameraName);
+
+            if (foundCam != null)
+            {
+                _currentPlaylist.Add(new RuntimeShot
+                {
+                    cam = foundCam,
+                    duration = step.duration
+                });
+            }
+            else
+            {
+                Debug.LogWarning($"[CINEMATICS] Camera '{step.cameraName}' not found in registry.");
+            }
+        }
+
+        Debug.Log($"[CINEMATICS] Loaded {_currentPlaylist.Count} shots for {profile.enemyName}");
+    }
+
+    // --- HANDLERS ---
     private void HandleAudioMarker(string markerName)
     {
-        // The AudioDirector has already filtered this to ensure it contains "NextShot_"
-        // We simply proceed to the next camera in the list.
-        // (You could parse markerName if you wanted specific shot logic, e.g. "NextShot_CloseUp")
+        // Audio Marker forces the next shot immediately
+        // This will automatically kill any running timer for the current shot
+        Debug.Log($"[CINEMATICS] Audio Marker '{markerName}' received. Switching.");
         TriggerNextShot();
     }
-    // -------------------
 
     private void LockCamera()
     {
-        // The player messed up! Freeze the camera system.
         _isLocked = true;
+        _shotTimer?.Kill(); // Stop auto-switching if player fumbles
     }
 
     // --- PUBLIC API ---
@@ -95,99 +128,88 @@ public class DuelCinematographer : MonoBehaviour
 
     public void TriggerNextShot()
     {
-        // 1. FIRST TIME TRIGGER (START)
+        // Kill any existing timer so we don't double-skip
+        _shotTimer?.Kill();
+
+        // 1. FIRST TIME START
         if (!_isActive)
         {
-            if (availableShots.Count == 0) return;
-
+            if (_currentPlaylist.Count == 0) return;
             _isActive = true;
-            _isLocked = false; // Reset lock on start
+            _isLocked = false;
             _duelStartTime = Time.time;
-            _shotIndex = 0;
+            _playlistIndex = 0;
         }
 
-        // 2. CHECK BLOCKERS (Danger Zone OR Fumble Lock)
-        if (IsInDangerZone() || _isLocked)
-        {
-            return;
-        }
+        // 2. CHECK BLOCKERS
+        if (IsInDangerZone() || _isLocked) return;
 
-        // 3. GET AND ACTIVATE NEXT SHOT
-        CinematicShot nextShot = GetNextShot();
-
-        if (nextShot != null)
+        // 3. ACTIVATE NEXT SHOT
+        if (_playlistIndex < _currentPlaylist.Count)
         {
-            ActivateShot(nextShot);
+            RuntimeShot currentShot = _currentPlaylist[_playlistIndex];
+            ActivateCamera(currentShot.cam);
+
+            // 4. HANDLE DURATION
+            if (currentShot.duration > 0f)
+            {
+                // Auto-switch after 'duration' seconds
+                _shotTimer = DOVirtual.DelayedCall(currentShot.duration, () =>
+                {
+                    if (_isActive && !_isLocked)
+                    {
+                        TriggerNextShot(); // Recursion (Safe via Delay)
+                    }
+                }).SetUpdate(true); // Ignore timeScale if needed, or false if you want it paused on pause
+            }
+
+            _playlistIndex++;
         }
         else
         {
-            // End of list -> Stop (Return to gameplay or hold last shot)
+            // Playlist finished
             StopCinematics();
         }
     }
 
     public void StopCinematics()
     {
+        _shotTimer?.Kill();
+
         if (!_isActive) return;
 
         _isActive = false;
         _isLocked = false;
-
         ResetAllCameras();
     }
-
-    // --- CORE LOGIC ---
 
     bool IsInDangerZone()
     {
         float enemyWait = (enemyAI.difficultyProfile != null) ? enemyAI.difficultyProfile.minWaitTime : 2.0f;
         float switchCutoffTime = _duelStartTime + enemyWait - safetyBuffer;
-
-        // If we are past the cutoff, we are in danger.
         return Time.time > switchCutoffTime;
     }
 
-    // --- HELPER FUNCTIONS ---
-
-    void ActivateShot(CinematicShot shot)
+    void ActivateCamera(CinemachineCamera cam)
     {
-        if (_currentCam != null) _currentCam.Priority = PRIORITY_INACTIVE;
+        if (_activeCam != null) _activeCam.Priority = PRIORITY_INACTIVE;
 
-        if (shot.virtualCamera != null)
+        if (cam != null)
         {
-            shot.virtualCamera.Priority = PRIORITY_ACTIVE;
-            _currentCam = shot.virtualCamera;
+            cam.Priority = PRIORITY_ACTIVE;
+            _activeCam = cam;
 
-            // Optional: Reset Dolly Track if using Tracked Dolly
-            // (Requires CinemachineSplineDolly or similar component)
-            var dolly = shot.virtualCamera.GetComponent<CinemachineSplineDolly>();
-            if (dolly != null)
-            {
-                dolly.CameraPosition = 0f;
-            }
+            var dolly = cam.GetComponent<CinemachineSplineDolly>();
+            if (dolly != null) dolly.CameraPosition = 0f;
         }
-    }
-
-    CinematicShot GetNextShot()
-    {
-        if (availableShots.Count == 0) return null;
-
-        // If we run out of shots, wrap around? Or stop?
-        // Current logic: Stop (returns null if index >= count)
-        // If you want to loop: _shotIndex % availableShots.Count
-        if (_shotIndex >= availableShots.Count) return null;
-
-        CinematicShot shot = availableShots[_shotIndex];
-        _shotIndex++;
-        return shot;
     }
 
     void ResetAllCameras()
     {
-        foreach (var shot in availableShots)
+        foreach (var cam in allSceneCameras)
         {
-            if (shot.virtualCamera != null) shot.virtualCamera.Priority = PRIORITY_INACTIVE;
+            if (cam != null) cam.Priority = PRIORITY_INACTIVE;
         }
-        _currentCam = null;
+        _activeCam = null;
     }
 }
