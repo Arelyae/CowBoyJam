@@ -44481,13 +44481,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 998406739}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.002128803, y: -0.7050183, z: 0.0021149602, w: 0.7091828}
-  m_LocalPosition: {x: 3.48, y: 1.1328895, z: -18.083632}
+  m_LocalRotation: {x: 0.02370199, y: -0.15370904, z: 0.0036881126, w: 0.987825}
+  m_LocalPosition: {x: 4.715394, y: 1.7366138, z: -38.38372}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1061623711}
-  m_LocalEulerAnglesHint: {x: 88.694, y: -150, z: -0.005}
+  m_LocalEulerAnglesHint: {x: 2.749, y: -17.689, z: 0}
 --- !u!114 &998406742
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -44565,7 +44565,7 @@ Camera:
     height: 1
   near clip plane: 0.01
   far clip plane: 1000
-  field of view: 15
+  field of view: 10
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -51293,6 +51293,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 05b1b04dd5cfd91449e4e0b5ed55051f, type: 2}
   - {fileID: 11400000, guid: 6c6d17844a7618d4fa3b74a74054eabc, type: 2}
   - {fileID: 11400000, guid: 42cf312e9adc7e44ea2b3c61551f5498, type: 2}
+  - {fileID: 11400000, guid: b449213cde428034a9910db797e3aabd, type: 2}
   - {fileID: 11400000, guid: d5de52e00f0a29f45a520f0338514b83, type: 2}
   - {fileID: 11400000, guid: 5ca4b7fb2d50e934792b7ec19a3d0691, type: 2}
   killCamScenarios: []
