@@ -38640,7 +38640,7 @@ MonoBehaviour:
   endManager: {fileID: 1020133722}
   scoreManager: {fileID: 1993324254}
   audioDirector: {fileID: 1555895232}
-  cinematographer: {fileID: 0}
+  cinematographer: {fileID: 1296159336}
   finalScoreManager: {fileID: 1412945253}
   continueInput: {fileID: -3105755096044777444, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   retryInput: {fileID: 2010083948814312958, guid: 052faaac586de48259a63d0c4782560b, type: 3}
@@ -59640,7 +59640,7 @@ MonoBehaviour:
   - {fileID: 281828831}
   - {fileID: 1141705819}
   - {fileID: 121150501}
-  safetyBuffer: 5
+  safetyBuffer: 3
 --- !u!1001 &1296638166
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -80898,7 +80898,7 @@ SkinnedMeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 93efc749c233f1f4e837e39d7c8c5dc5, type: 2}
+  - {fileID: 2100000, guid: 9f4e9560b3e6c5e49bdf6ca37ec6dedf, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

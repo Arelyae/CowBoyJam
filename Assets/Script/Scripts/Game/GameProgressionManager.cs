@@ -32,7 +32,7 @@ public class GameProgressionManager : MonoBehaviour
     public EndManager endManager;
     public ScoreManager scoreManager;
     public DuelAudioDirector audioDirector;
-    public DuelCinematographer cinematographer; // <--- Drag your Cinematographer here
+    public DuelCinematographer cinematographer; // <--- MAKE SURE THIS IS ASSIGNED IN INSPECTOR
 
     [Header("--- END GAME ---")]
     public FinalScoreManager finalScoreManager;
@@ -200,12 +200,17 @@ public class GameProgressionManager : MonoBehaviour
 
         if (enemyAI != null) enemyAI.UpdateProfile(targetProfile);
 
-        // --- NEW: LOAD CINEMATICS ---
+        // --- CINEMATICS UPDATE ---
         if (cinematographer != null)
         {
+            // 1. Load the specific shots for this enemy
             cinematographer.LoadProfileCinematics(targetProfile);
+
+            // 2. IMPORTANT: Actually start the sequence!
+            // This shows the first camera immediately and starts any durations.
+            cinematographer.StartCinematicSequence();
         }
-        // ----------------------------
+        // -------------------------
 
         bool isLastEnemy = (index == enemyRoster.Count - 1);
         if (scoreManager != null)
