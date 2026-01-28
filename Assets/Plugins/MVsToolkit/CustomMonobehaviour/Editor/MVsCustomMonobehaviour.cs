@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Reflection;
-using MVsToolkit.Utils;
+using MVsToolkit.Utilities;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,9 +12,10 @@ namespace MVsToolkit.Dev
         public List<MVsInspectorPropertyGroup> propertyGroups = new List<MVsInspectorPropertyGroup>();
         public List<MVsHandleData> handles = new List<MVsHandleData>();
 
-        private GUIStyle _helpBoxNoTopMargin;
+        GUIStyle _helpBoxNoTopMargin, _helpBoxNoMargin;
 
-        private readonly Dictionary<MVsFoldoutGroup, bool> _foldoutStates = new();
+        readonly Dictionary<MVsFoldoutGroup, bool> _foldoutStates = new();
+        readonly Dictionary<MVsSOField, bool> _soStates = new();
 
         private void OnEnable()
         {
@@ -112,13 +113,18 @@ namespace MVsToolkit.Dev
                 if (propertyGroups.Count == 0)
                     InitializeData();
 
+                MVsPropertyField item =
+                    (prop.propertyType == SerializedPropertyType.ObjectReference
+                    && prop.objectReferenceValue is ScriptableObject) ? new MVsSOField(prop) : new MVsPropertyField(prop);
+
+
                 if (propertyGroups.GetLast().tabs.Count == 0)
                     propertyGroups.GetLast().tabs.Add(new MVsTabGroup());
 
                 if (propertyGroups.GetLast().tabs.GetLast().currentFoldout != null)
-                    propertyGroups.GetLast().tabs.GetLast().currentFoldout.fields.Add(new MVsPropertyField(prop));
+                    propertyGroups.GetLast().tabs.GetLast().currentFoldout.fields.Add(item);
                 else
-                    propertyGroups.GetLast().tabs.GetLast().items.Add(new MVsPropertyField(prop));
+                    propertyGroups.GetLast().tabs.GetLast().items.Add(item);
             }
             while (iterator.NextVisible(false));
         }
@@ -227,11 +233,6 @@ namespace MVsToolkit.Dev
 
         void DrawScriptField()
         {
-            FieldInfo field = target.GetType().GetField(
-                "m_Script",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-            );
-
             GUI.enabled = false;
             GUILayout.Space(1);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"), true);
@@ -332,14 +333,11 @@ namespace MVsToolkit.Dev
                 case MVsPropertyField pf:
                     if (pf.property != null)
                     {
-                        if (pf.property.name == "m_Script")
+                        if (pf.property.name != "m_Script")
                         {
-                            GUI.enabled = false;
-                            EditorGUILayout.PropertyField(pf.property, true);
-                            GUI.enabled = true;
-                            GUILayout.Space(4);
+                            if (pf is MVsSOField) DrawScriptableObjectProperty(pf.property);
+                            else EditorGUILayout.PropertyField(pf.property, true);
                         }
-                        else EditorGUILayout.PropertyField(pf.property, true);
                     }
                     break;
                 case MVsFoldoutGroup fg:
@@ -348,6 +346,84 @@ namespace MVsToolkit.Dev
                 default:
                     break;
             }
+        }
+
+        void DrawScriptableObjectProperty(SerializedProperty property)
+        {
+            if (property.objectReferenceValue == null)
+            {
+                EditorGUILayout.ObjectField(property);
+                return;
+            }
+
+            ScriptableObject so = property.objectReferenceValue as ScriptableObject;
+            if (so == null)
+            {
+                EditorGUILayout.ObjectField(property);
+                return;
+            }
+
+            // Persistent key
+            string foldKey = GetPrefsPrefix() + "_soFoldout_" + property.propertyPath;
+            bool expanded = EditorPrefs.GetBool(foldKey, false);
+
+            // HelpBox with zero margins
+            GUIStyle box = GetNoMarginHelpBoxStyle();
+            EditorGUILayout.BeginVertical(box);
+
+            // --- HEADER RECT ---
+            Rect headerRect = EditorGUILayout.GetControlRect(false);
+
+            // If expanded → draw a slightly lighter background
+            if (expanded)
+            {
+                Color bg = EditorGUIUtility.isProSkin
+                    ? new Color(1f, 1f, 1f, 0.06f)   // subtle light overlay in dark mode
+                    : new Color(0f, 0f, 0f, 0.06f);  // subtle dark overlay in light mode
+
+                EditorGUI.DrawRect(headerRect, bg);
+            }
+
+            // Label + ObjectField
+            float labelWidth = EditorGUIUtility.labelWidth;
+            Rect labelRect = new Rect(headerRect.x, headerRect.y, labelWidth, headerRect.height);
+            Rect fieldRect = new Rect(headerRect.x + labelWidth, headerRect.y, headerRect.width - labelWidth, headerRect.height);
+
+            EditorGUI.LabelField(labelRect, property.displayName);
+            EditorGUI.ObjectField(fieldRect, property, GUIContent.none);
+
+            // Toggle expansion on click
+            if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition))
+            {
+                expanded = !expanded;
+                EditorPrefs.SetBool(foldKey, expanded);
+                Event.current.Use();
+            }
+
+            // --- INTERNAL FIELDS ---
+            if (expanded)
+            {
+                GUILayout.Space(2);
+
+                SerializedObject soSerialized = new SerializedObject(so);
+                SerializedProperty iterator = soSerialized.GetIterator();
+
+                bool enterChildren = true;
+                while (iterator.NextVisible(enterChildren))
+                {
+                    if (iterator.propertyPath == "m_Script")
+                        continue;
+
+                    EditorGUILayout.PropertyField(iterator, true);
+                    enterChildren = false;
+                }
+
+                soSerialized.ApplyModifiedProperties();
+                GUILayout.Space(2);
+            }
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(4);
         }
 
         void DrawFoldoutGroup(MVsFoldoutGroup fg)
@@ -493,9 +569,19 @@ namespace MVsToolkit.Dev
             {
                 _helpBoxNoTopMargin = new GUIStyle(EditorStyles.helpBox);
                 RectOffset m = _helpBoxNoTopMargin.margin;
-                _helpBoxNoTopMargin.margin = new RectOffset(m.left, m.right, 0, m.bottom);
+                _helpBoxNoTopMargin.margin = new RectOffset(m.left, m.right, 0, 0);
             }
             return _helpBoxNoTopMargin;
+        }
+        GUIStyle GetNoMarginHelpBoxStyle()
+        {
+            if(_helpBoxNoMargin == null)
+            {
+                _helpBoxNoMargin = new GUIStyle(EditorStyles.helpBox);
+                _helpBoxNoMargin.margin = new RectOffset(0, 0, 0, 0);
+                _helpBoxNoMargin.padding = new RectOffset(0, 0, 0, 0);
+            }
+            return _helpBoxNoMargin;
         }
 
         // Persistency helpers: store selections per target instance and component type

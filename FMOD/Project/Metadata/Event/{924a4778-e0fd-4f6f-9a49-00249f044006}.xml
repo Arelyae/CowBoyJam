@@ -29,6 +29,7 @@
 			<destination>{05e56419-6e8a-4a0c-a7d1-210cac2e75a5}</destination>
 			<destination>{dc694277-d295-4305-b35f-ebcd24b9b735}</destination>
 			<destination>{9f45dc97-1aed-4e10-a66d-a0732eed9748}</destination>
+			<destination>{4f7fe535-a0c8-4fd3-b40c-f1907b3ee878}</destination>
 		</relationship>
 		<relationship name="groupTracks">
 			<destination>{6fb50592-9adc-4f2d-80aa-fbe1c1e581b7}</destination>
@@ -81,6 +82,7 @@
 	<object class="MarkerTrack" id="{05e56419-6e8a-4a0c-a7d1-210cac2e75a5}" />
 	<object class="MarkerTrack" id="{dc694277-d295-4305-b35f-ebcd24b9b735}" />
 	<object class="MarkerTrack" id="{9f45dc97-1aed-4e10-a66d-a0732eed9748}" />
+	<object class="MarkerTrack" id="{4f7fe535-a0c8-4fd3-b40c-f1907b3ee878}" />
 	<object class="GroupTrack" id="{6fb50592-9adc-4f2d-80aa-fbe1c1e581b7}">
 		<relationship name="automationTracks">
 			<destination>{3dc34b7e-f0be-4aad-aa3f-3ced9f929dc5}</destination>
@@ -175,6 +177,7 @@
 			<destination>{0224c713-8489-42ec-90b8-884e2e12d329}</destination>
 			<destination>{18c300ae-c4c2-48c4-8017-7102a72a70c2}</destination>
 			<destination>{fed32b2f-2758-446e-a75d-74c827321d3e}</destination>
+			<destination>{93059e08-8db1-49eb-8f2e-a4bc30296f78}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerMaster" id="{b406a387-a029-4fa8-986c-802b078a8078}">
@@ -1145,6 +1148,20 @@
 		</relationship>
 		<relationship name="markerTrack">
 			<destination>{9f45dc97-1aed-4e10-a66d-a0732eed9748}</destination>
+		</relationship>
+	</object>
+	<object class="NamedMarker" id="{93059e08-8db1-49eb-8f2e-a4bc30296f78}">
+		<property name="position">
+			<value>221.46321541670855</value>
+		</property>
+		<property name="name">
+			<value>BeginFinal</value>
+		</property>
+		<relationship name="timeline">
+			<destination>{1c732c5f-7094-4afc-8a53-5d7b69d3b606}</destination>
+		</relationship>
+		<relationship name="markerTrack">
+			<destination>{4f7fe535-a0c8-4fd3-b40c-f1907b3ee878}</destination>
 		</relationship>
 	</object>
 	<object class="MixerBusEffectChain" id="{5d19ff32-0374-4828-b019-c34879b09788}">
