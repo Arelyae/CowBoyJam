@@ -23903,6 +23903,7 @@ GameObject:
   - component: {fileID: 524236457}
   - component: {fileID: 524236459}
   - component: {fileID: 524236458}
+  - component: {fileID: 524236460}
   m_Layer: 0
   m_Name: CinemachineCameraSpline7
   m_TagString: Untagged
@@ -23918,13 +23919,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 524236456}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.1444704, y: -0.20518476, z: 0.030638358, w: 0.96751684}
-  m_LocalPosition: {x: 5.33, y: 6.268, z: -38.04}
+  m_LocalRotation: {x: 0.2108804, y: -0.32193023, z: 0.07379017, w: 0.9200247}
+  m_LocalPosition: {x: 7.749981, y: 6.0726132, z: -30.430445}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 790673761}
-  m_LocalEulerAnglesHint: {x: 16.985, y: -23.947, z: -2.824}
+  m_LocalEulerAnglesHint: {x: 16.727, y: -13.647, z: 2.994}
 --- !u!114 &524236458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23942,7 +23943,7 @@ MonoBehaviour:
     Position: 0
     Units: 0
   SplineOffset: {x: 0, y: 0, z: 0}
-  CameraRotation: 0
+  CameraRotation: 3
   Damping:
     Enabled: 0
     Position: {x: 0, y: 0, z: 0}
@@ -23960,7 +23961,7 @@ MonoBehaviour:
     - rid: 2809413226108289377
       type: {class: SplineAutoDolly/FixedSpeed, ns: Unity.Cinemachine, asm: Unity.Cinemachine}
       data:
-        Speed: 0.05
+        Speed: 0.1
 --- !u!114 &524236459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24004,6 +24005,35 @@ MonoBehaviour:
       BarrelClipping: 0.25
       Anamorphism: 0
   BlendHint: 0
+--- !u!114 &524236460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 524236456}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f38bda98361e1de48a4ca2bd86ea3c17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Composition:
+    ScreenPosition: {x: 0, y: 0}
+    DeadZone:
+      Enabled: 1
+      Size: {x: 0.38, y: 0.23}
+    HardLimits:
+      Enabled: 1
+      Size: {x: 0.6, y: 0.47}
+      Offset: {x: 0, y: 0}
+  CenterOnActivate: 1
+  TargetOffset: {x: 0, y: -1.15, z: 2}
+  Damping: {x: 0.5, y: 0.5}
+  Lookahead:
+    Enabled: 0
+    Time: 0
+    Smoothing: 0
+    IgnoreY: 0
 --- !u!1 &524349262
 GameObject:
   m_ObjectHideFlags: 0
@@ -32489,6 +32519,148 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4707029914767858, guid: 2350092dab2555d48a660d5439d82826, type: 3}
   m_PrefabInstance: {fileID: 738239941}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &738265155
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 738265156}
+  - component: {fileID: 738265159}
+  - component: {fileID: 738265158}
+  - component: {fileID: 738265157}
+  m_Layer: 0
+  m_Name: CinemachineCameraSpline8
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &738265156
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 738265155}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.017681168, y: -0.90394205, z: -0.037550267, w: -0.4256362}
+  m_LocalPosition: {x: -4.1099997, y: 0.84800005, z: -15.9680805}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 790673761}
+  m_LocalEulerAnglesHint: {x: 16.727, y: -13.647, z: 2.994}
+--- !u!114 &738265157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 738265155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f38bda98361e1de48a4ca2bd86ea3c17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Composition:
+    ScreenPosition: {x: 0, y: 0}
+    DeadZone:
+      Enabled: 1
+      Size: {x: 0.38, y: 0.23}
+    HardLimits:
+      Enabled: 1
+      Size: {x: 0.6, y: 0.47}
+      Offset: {x: 0, y: 0}
+  CenterOnActivate: 1
+  TargetOffset: {x: -2, y: 1.5, z: 0}
+  Damping: {x: 0.5, y: 0.5}
+  Lookahead:
+    Enabled: 0
+    Time: 0
+    Smoothing: 0
+    IgnoreY: 0
+--- !u!114 &738265158
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 738265155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90eebaab98e4b44b0ba8c79821e554e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SplineSettings:
+    Spline: {fileID: 969523589}
+    Position: 0
+    Units: 0
+  SplineOffset: {x: 0, y: 0, z: 0}
+  CameraRotation: 3
+  Damping:
+    Enabled: 0
+    Position: {x: 0, y: 0, z: 0}
+    Angular: 0
+  AutomaticDolly:
+    Enabled: 1
+    Method:
+      rid: 2809413226108289377
+  m_LegacyPosition: -1
+  m_LegacyUnits: 0
+  m_LegacySpline: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 2809413226108289377
+      type: {class: SplineAutoDolly/FixedSpeed, ns: Unity.Cinemachine, asm: Unity.Cinemachine}
+      data:
+        Speed: 0.1
+--- !u!114 &738265159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 738265155}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Priority:
+    Enabled: 1
+    m_Value: 0
+  OutputChannel: 1
+  StandbyUpdate: 2
+  m_StreamingVersion: 20241001
+  m_LegacyPriority: 0
+  Target:
+    TrackingTarget: {fileID: 1632970584}
+    LookAtTarget: {fileID: 0}
+    CustomLookAtTarget: 0
+  Lens:
+    FieldOfView: 40
+    OrthographicSize: 10
+    NearClipPlane: 0.10000038
+    FarClipPlane: 5000
+    Dutch: 0
+    ModeOverride: 0
+    PhysicalProperties:
+      GateFit: 2
+      SensorSize: {x: 21.946, y: 16.002}
+      LensShift: {x: 0, y: 0}
+      FocusDistance: 10
+      Iso: 200
+      ShutterSpeed: 0.005
+      Aperture: 16
+      BladeCount: 5
+      Curvature: {x: 2, y: 11}
+      BarrelClipping: 0.25
+      Anamorphism: 0
+  BlendHint: 0
 --- !u!1001 &738582763
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -34989,6 +35161,7 @@ Transform:
   - {fileID: 1625859899}
   - {fileID: 57010506}
   - {fileID: 524236457}
+  - {fileID: 738265156}
   - {fileID: 785663886}
   m_Father: {fileID: 576665150}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -43362,6 +43535,138 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4262727619187764, guid: 1ccfb12c2d150c44ca82e08ef622cd75, type: 3}
   m_PrefabInstance: {fileID: 967899662}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &969523588
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 969523590}
+  - component: {fileID: 969523589}
+  m_Layer: 0
+  m_Name: SplineEnemyFocus_3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &969523589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969523588}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dab5c7d4c32e743048dfca98e2d5914f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Spline:
+    m_EditModeType: 1
+    m_Knots: []
+    m_MetaData: []
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Splines:
+  - m_EditModeType: 1
+    m_Knots:
+    - Position:
+        x: -0.5
+        y: -0.99
+        z: 2.32
+      TangentIn:
+        x: -0
+        y: -0
+        z: -0.4257319
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0.4257319
+      Rotation:
+        value:
+          x: -0.10976975
+          y: 0.5960228
+          z: 0.085185915
+          w: 0.7908545
+    - Position:
+        x: 3.4339025
+        y: 0.18148327
+        z: 3.449956
+      TangentIn:
+        x: -0
+        y: -0
+        z: -1.3679539
+      TangentOut:
+        x: 0
+        y: 0
+        z: 1.6016703
+      Rotation:
+        value:
+          x: -0.08000289
+          y: 0.7609528
+          z: 0.020972373
+          w: 0.6435142
+    - Position:
+        x: 8.221692
+        y: -0.01752472
+        z: 0.11826515
+      TangentIn:
+        x: -0
+        y: -0
+        z: -0.5836325
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0.5836325
+      Rotation:
+        value:
+          x: -0.07084195
+          y: 0.88340735
+          z: -0.056171525
+          w: 0.45980176
+    m_MetaData:
+    - Mode: 0
+      Tension: 0.5
+    - Mode: 0
+      Tension: 0.5
+    - Mode: 0
+      Tension: 0.5
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Knots:
+    m_KnotsLink: []
+--- !u!4 &969523590
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969523588}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -3.61, y: 0.87, z: 20.71192}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1996717757}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &969847537
 GameObject:
   m_ObjectHideFlags: 0
@@ -51222,41 +51527,23 @@ MonoBehaviour:
   - m_EditModeType: 1
     m_Knots:
     - Position:
-        x: 0
-        y: 0
-        z: 0
-      TangentIn:
-        x: -0
-        y: -0
-        z: -0.79874796
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0.79874796
-      Rotation:
-        value:
-          x: 0.011185316
-          y: 0.1534018
-          z: -0.0076853074
-          w: 0.9880707
-    - Position:
         x: 2.4199805
         y: -0.19538689
         z: 7.609556
       TangentIn:
         x: -0
         y: -0
-        z: -2.5051742
+        z: -0.75101864
       TangentOut:
         x: 0
         y: 0
-        z: 2.4291728
+        z: 0.75101864
       Rotation:
         value:
-          x: 0.00047989577
-          y: 0.0049204896
-          z: -0.07381286
-          w: 0.99725986
+          x: -0.0019843995
+          y: -0.1440607
+          z: -0.06012672
+          w: 0.9877385
     - Position:
         x: 0.2844591
         y: -0.03584099
@@ -51276,8 +51563,6 @@ MonoBehaviour:
           z: -0.07621051
           w: 0.98662776
     m_MetaData:
-    - Mode: 0
-      Tension: 0.5
     - Mode: 0
       Tension: 0.5
     - Mode: 0
@@ -60191,6 +60476,7 @@ MonoBehaviour:
   - {fileID: 1625859901}
   - {fileID: 57010508}
   - {fileID: 524236459}
+  - {fileID: 738265159}
   - {fileID: 785663888}
   safetyBuffer: 3
 --- !u!1001 &1296638166
@@ -90031,6 +90317,7 @@ Transform:
   - {fileID: 1742263477}
   - {fileID: 803357530}
   - {fileID: 85923175}
+  - {fileID: 969523590}
   - {fileID: 125729671}
   - {fileID: 1428570130}
   - {fileID: 1118741367}
