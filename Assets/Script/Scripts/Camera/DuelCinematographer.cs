@@ -3,11 +3,10 @@ using Unity.Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using DG.Tweening; // Using DOTween for reliable timers
+using DG.Tweening;
 
 public class DuelCinematographer : MonoBehaviour
 {
-    // Internal struct to hold the runtime data
     private class RuntimeShot
     {
         public CinemachineCamera cam;
@@ -23,7 +22,6 @@ public class DuelCinematographer : MonoBehaviour
     [Tooltip("Drag EVERY Cinemachine Camera in your scene here.")]
     public List<CinemachineCamera> allSceneCameras;
 
-    // The Playlist now holds our runtime data struct
     private List<RuntimeShot> _currentPlaylist = new List<RuntimeShot>();
 
     [Header("--- Safety ---")]
@@ -36,7 +34,10 @@ public class DuelCinematographer : MonoBehaviour
     private bool _isLocked = false;
     private int _playlistIndex = 0;
 
-    // Timer Reference (so we can kill it if an Audio Marker happens first)
+    // --- NEW FLAG ---
+    private bool _isWaitingForTimer = false;
+    // ----------------
+
     private Tween _shotTimer;
 
     // Priorities
@@ -69,11 +70,10 @@ public class DuelCinematographer : MonoBehaviour
         }
     }
 
-    // --- LOADING THE PROFILE ---
     public void LoadProfileCinematics(DuelEnemyProfile profile)
     {
         _currentPlaylist.Clear();
-        StopCinematics(); // Clear state
+        StopCinematics();
 
         if (profile.cinematicSequence == null || profile.cinematicSequence.Count == 0)
         {
@@ -83,7 +83,6 @@ public class DuelCinematographer : MonoBehaviour
 
         foreach (var step in profile.cinematicSequence)
         {
-            // Find the camera by name
             CinemachineCamera foundCam = allSceneCameras.FirstOrDefault(c => c.gameObject.name == step.cameraName);
 
             if (foundCam != null)
@@ -106,8 +105,14 @@ public class DuelCinematographer : MonoBehaviour
     // --- HANDLERS ---
     private void HandleAudioMarker(string markerName)
     {
-        // Audio Marker forces the next shot immediately
-        // This will automatically kill any running timer for the current shot
+        // FIX: If the current shot is timed (Duration > 0), ignore the audio marker.
+        if (_isWaitingForTimer)
+        {
+            // Debug.Log($"[CINEMATICS] Marker ignored because shot is time-locked.");
+            return;
+        }
+
+        // Otherwise (Duration was 0), the marker triggers the switch.
         Debug.Log($"[CINEMATICS] Audio Marker '{markerName}' received. Switching.");
         TriggerNextShot();
     }
@@ -115,7 +120,8 @@ public class DuelCinematographer : MonoBehaviour
     private void LockCamera()
     {
         _isLocked = true;
-        _shotTimer?.Kill(); // Stop auto-switching if player fumbles
+        _shotTimer?.Kill();
+        _isWaitingForTimer = false;
     }
 
     // --- PUBLIC API ---
@@ -128,8 +134,8 @@ public class DuelCinematographer : MonoBehaviour
 
     public void TriggerNextShot()
     {
-        // Kill any existing timer so we don't double-skip
         _shotTimer?.Kill();
+        _isWaitingForTimer = false; // Reset flag by default
 
         // 1. FIRST TIME START
         if (!_isActive)
@@ -153,14 +159,24 @@ public class DuelCinematographer : MonoBehaviour
             // 4. HANDLE DURATION
             if (currentShot.duration > 0f)
             {
-                // Auto-switch after 'duration' seconds
+                // Set flag to BLOCK audio markers
+                _isWaitingForTimer = true;
+
                 _shotTimer = DOVirtual.DelayedCall(currentShot.duration, () =>
                 {
                     if (_isActive && !_isLocked)
                     {
-                        TriggerNextShot(); // Recursion (Safe via Delay)
+                        // Timer finished, allow switch and trigger it
+                        _isWaitingForTimer = false;
+                        TriggerNextShot();
                     }
-                }).SetUpdate(true); // Ignore timeScale if needed, or false if you want it paused on pause
+                }).SetUpdate(true);
+            }
+            else
+            {
+                // Duration is 0. We leave _isWaitingForTimer as false.
+                // This means we are now waiting for HandleAudioMarker to trigger the next one.
+                _isWaitingForTimer = false;
             }
 
             _playlistIndex++;
@@ -180,11 +196,15 @@ public class DuelCinematographer : MonoBehaviour
 
         _isActive = false;
         _isLocked = false;
+        _isWaitingForTimer = false;
+
         ResetAllCameras();
     }
 
     bool IsInDangerZone()
     {
+        if (enemyAI == null) return false;
+
         float enemyWait = (enemyAI.difficultyProfile != null) ? enemyAI.difficultyProfile.minWaitTime : 2.0f;
         float switchCutoffTime = _duelStartTime + enemyWait - safetyBuffer;
         return Time.time > switchCutoffTime;

@@ -87,6 +87,9 @@
 		</relationship>
 	</object>
 	<object class="EventMixerMaster" id="{810c2ae2-e12b-4fa6-bb90-5a16353f17df}">
+		<property name="volume">
+			<value>10</value>
+		</property>
 		<relationship name="modulators">
 			<destination>{44ec3825-43f5-4cc3-b16b-2b76da3d4d8e}</destination>
 		</relationship>
@@ -241,6 +244,9 @@
 	</object>
 	<object class="MixerBusPanner" id="{2c183d4d-d787-482c-8532-d0ef2096404a}" />
 	<object class="SingleSound" id="{1ab02a9c-04d6-450c-a310-4508853a9df5}">
+		<property name="volume">
+			<value>-13</value>
+		</property>
 		<relationship name="audioFile">
 			<destination>{a5ba1123-21ad-416e-bf76-347ac3b0253e}</destination>
 		</relationship>

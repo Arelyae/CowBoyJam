@@ -19,4 +19,8 @@ MonoBehaviour:
   slowestDrawSpeed: 1
   musicIntensityStep: 50
   skinMaterial: {fileID: 2100000, guid: 1e756742ff3f9aa438438d06fcfe7d8b, type: 2}
-  cinematicSequence: []
+  cinematicSequence:
+  - cameraName: CinemachineCameraSpline2
+    duration: 5
+  - cameraName: CinemachineCameraSpline1
+    duration: 20

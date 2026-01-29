@@ -39838,6 +39838,8 @@ MonoBehaviour:
   reloadAction: {fileID: 2010083948814312958, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   scoreManager: {fileID: 0}
   failManager: {fileID: 2114810471}
+  finalScoreManager: {fileID: 0}
+  gameplayHUDGroup: {fileID: 0}
   tutorialManager: {fileID: 2099760272}
   cinematographer: {fileID: 0}
   audioDirector: {fileID: 0}
@@ -84327,8 +84329,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   failPanel: {fileID: 484757715}
-  restartPromptGroup: {fileID: 859803735}
-  promptFadeInDuration: 0.5
   screenOverlay: {fileID: 786013363}
   overlayMaxAlpha: 1
   overlayFadeDuration: 0
@@ -84336,12 +84336,15 @@ MonoBehaviour:
   titleText: {fileID: 1981514885}
   decorationImage: {fileID: 271619327}
   reasonText: {fileID: 1251834699}
+  restartPromptGroup: {fileID: 859803735}
+  promptFadeInDuration: 0.5
   delayBeforeSequence: 0.7
   fillDuration: 0.5
   delayImageToText: 0.3
   titleTypingDuration: 0.25
   reasonTypingDuration: 0.5
   delayBetweenPhases: 0.5
+  skipInputDelay: 0.8
   phase1Sound:
     Guid:
       Data1: -587797934
