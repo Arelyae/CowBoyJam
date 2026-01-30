@@ -13,10 +13,26 @@ MonoBehaviour:
   m_Name: Enemy9
   m_EditorClassIdentifier: 
   enemyName: Yourself
-  minWaitTime: 15
-  maxWaitTime: 30
+  minWaitTime: 40
+  maxWaitTime: 50
   fastestDrawSpeed: 1
   slowestDrawSpeed: 2
   musicIntensityStep: 10
   skinMaterial: {fileID: -4565884009001823619, guid: d2fd906100af3a1428cdcdaabcfabc4f, type: 3}
-  cinematicSequence: []
+  cinematicSequence:
+  - cameraName: CinemachineCameraSpline1
+    duration: 0
+  - cameraName: CinemachineCameraSpline3
+    duration: 0
+  - cameraName: CinemachineCameraSpline4
+    duration: 0
+  - cameraName: CinemachineCameraSpline5
+    duration: 0
+  - cameraName: CinemachineCameraSpline6
+    duration: 0
+  - cameraName: CinemachineCameraSpline7
+    duration: 0
+  - cameraName: CinemachineCameraSpline8
+    duration: 0
+  - cameraName: CinemachineCameraSpline9
+    duration: 0

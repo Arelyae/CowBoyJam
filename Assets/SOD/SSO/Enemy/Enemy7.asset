@@ -21,6 +21,6 @@ MonoBehaviour:
   skinMaterial: {fileID: 2100000, guid: 7094fa269254da44a8989f8788d4c781, type: 2}
   cinematicSequence:
   - cameraName: CinemachineCameraSpline3
-    duration: 3
-  - cameraName: CinemachineCameraSpline4
     duration: 5
+  - cameraName: CinemachineCameraSpline4
+    duration: 10

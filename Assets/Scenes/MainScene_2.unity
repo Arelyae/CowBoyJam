@@ -5530,7 +5530,7 @@ MonoBehaviour:
     - rid: 2809413226108289377
       type: {class: SplineAutoDolly/FixedSpeed, ns: Unity.Cinemachine, asm: Unity.Cinemachine}
       data:
-        Speed: 0.1
+        Speed: 0.01
 --- !u!114 &121150501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72443,7 +72443,7 @@ MonoBehaviour:
   - StingerA
   - StingerB
   - StingerC
-  smoothingSpeed: 20
+  smoothingSpeed: 100
 --- !u!1001 &1556729991
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -85171,6 +85171,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   publicKey: e9ef79dc406367ede2899011b4be50d6744c6074568febea69f74b6ab6686bca
+  Take: 50
   leaderboardPanel: {fileID: 1428291880}
   entriesContainer: {fileID: 1533730422}
   entryPrefab: {fileID: 1632226084540507663, guid: fa68c309bed66654994a852786c48eff, type: 3}

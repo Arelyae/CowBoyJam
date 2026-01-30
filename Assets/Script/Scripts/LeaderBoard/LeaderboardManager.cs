@@ -1,14 +1,16 @@
-using UnityEngine;
-using TMPro;
 using Dan.Main;
-using System.Collections.Generic;
+using Dan.Models;
 using DG.Tweening;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
 
 public class LeaderboardManager : MonoBehaviour
 {
     [Header("--- Configuration ---")]
     [Tooltip("Paste your Public Key from the Leaderboard Creator Dashboard here.")]
     public string publicKey;
+    public float Take;
 
     [Header("--- UI References ---")]
     public GameObject leaderboardPanel;
@@ -78,7 +80,18 @@ public class LeaderboardManager : MonoBehaviour
 
     private void FetchLeaderboard()
     {
-        LeaderboardCreator.GetLeaderboard(publicKey, (entries) =>
+        // Dans ce package, les propriétés sont souvent nommées différemment :
+        // 'Take' au lieu de 'Limit'
+        // 'IsDescending' peut ne pas exister directement dans la requête, 
+        // car l'ordre est souvent géré dans le Dashboard Unity ou via une autre propriété.
+
+        LeaderboardSearchQuery query = new LeaderboardSearchQuery
+        {
+            Take = 100, // Utilisez 'Take' pour définir le nombre d'entrées
+            Skip = 0   // Optionnel : utile pour la pagination
+        };
+
+        LeaderboardCreator.GetLeaderboard(publicKey, query, (entries) =>
         {
             if (loadingSpinner) loadingSpinner.SetActive(false);
             UpdateUI(entries);
