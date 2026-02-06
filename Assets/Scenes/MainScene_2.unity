@@ -18677,7 +18677,7 @@ GameObject:
   - component: {fileID: 410087042}
   - component: {fileID: 410087043}
   m_Layer: 0
-  m_Name: Directional Light
+  m_Name: Sun
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18700,7 +18700,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 2
+    m_Type: 1
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -18757,7 +18757,7 @@ Transform:
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
   m_LocalRotation: {x: 0.10423603, y: 0.0006598006, z: -0.0211201, w: 0.9943281}
-  m_LocalPosition: {x: -3, y: 6.19, z: -4.82}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -23288,10 +23288,22 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 23166872923016758, guid: afc78ae17d5637e47834b329300d6e9a, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 23170404457389194, guid: afc78ae17d5637e47834b329300d6e9a, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 23170404457389194, guid: afc78ae17d5637e47834b329300d6e9a, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 66a8a6e30880caa48908020cf5388217, type: 2}
+    - target: {fileID: 23528156438368990, guid: afc78ae17d5637e47834b329300d6e9a, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 23528156438368990, guid: afc78ae17d5637e47834b329300d6e9a, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -59937,6 +59949,10 @@ PrefabInstance:
       value: 2.515
       objectReference: {fileID: 0}
     - target: {fileID: -4605959248704063399, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -4605959248704063399, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: be0333df2371a0a4b820069066b15c73, type: 2}
@@ -59965,12 +59981,20 @@ PrefabInstance:
       value: -0.241
       objectReference: {fileID: 0}
     - target: {fileID: 894327066436063930, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 894327066436063930, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 710d4b02cb91961408f9ade1cf68a57c, type: 2}
     - target: {fileID: 919132149155446097, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
       propertyPath: m_Name
       value: cowboy hat latest
+      objectReference: {fileID: 0}
+    - target: {fileID: 3808907228710753515, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3808907228710753515, guid: cf3f1326963558c44a3002d1c5457ae1, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -85179,7 +85203,7 @@ MonoBehaviour:
   loadingSpinner: {fileID: 1885049238}
   nameInputField: {fileID: 616611420}
   submitButton: {fileID: 163753671}
-  restartButton: {fileID: 0}
+  restartButton: {fileID: 1769573472}
 --- !u!1001 &1870730744
 PrefabInstance:
   m_ObjectHideFlags: 0
