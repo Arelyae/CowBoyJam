@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Yourself
   minWaitTime: 40
   maxWaitTime: 50
-  fastestDrawSpeed: 1
+  fastestDrawSpeed: 1.5
   slowestDrawSpeed: 2
   musicIntensityStep: 10
   skinMaterial: {fileID: -4565884009001823619, guid: d2fd906100af3a1428cdcdaabcfabc4f, type: 3}
@@ -28,11 +28,9 @@ MonoBehaviour:
     duration: 0
   - cameraName: CinemachineCameraSpline5
     duration: 0
-  - cameraName: CinemachineCameraSpline6
+  - cameraName: CinemachineCameraSpline9
     duration: 0
   - cameraName: CinemachineCameraSpline7
     duration: 0
   - cameraName: CinemachineCameraSpline8
-    duration: 0
-  - cameraName: CinemachineCameraSpline9
     duration: 0
